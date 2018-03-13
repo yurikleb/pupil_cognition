@@ -1,0 +1,49 @@
+<Logic>:
+
+    data_graph: pupil_data_graph
+
+    BoxLayout:
+        
+        orientation: "vertical"
+        
+        BoxLayout:
+            size_hint: [1, .8]
+            Graph:
+                id: pupil_data_graph
+                xlabel: "Time"
+                ylabel: "Pupil Size"
+                x_grid: True
+                y_grid: True
+                ymax: 10
+                x_ticks_minor: 5
+                x_ticks_major: 25
+                background_color: [1,1,1,.2]
+        
+        BoxLayout:
+            size_hint: [1, .1]
+            orientation: "horizontal"
+            Button:
+                text: "START"
+                bold: True
+                on_press: root.start()
+            Button:
+                text: "STOP"
+                bold: True
+                on_press: root.stop()
+            Button:
+                text: "SAVE"
+                bold: True
+            Button:
+                text: "QUIT"
+                bold: True
+                on_press: root.quit_app()
+        
+        BoxLayout:
+            size_hint: [1, .1]
+            orientation: "vertical"
+            Label:
+                halign: "left"
+                width: self.width
+                text: str(root.status)
+
+
