@@ -1,4 +1,4 @@
-<Logic>:
+<Recorder>:
 
     data_graph: pupil_data_graph
 
@@ -7,21 +7,10 @@
         orientation: "vertical"
         
         BoxLayout:
-            size_hint: [1, .8]
-            Graph:
-                id: pupil_data_graph
-                xlabel: "Time"
-                ylabel: "Pupil Size"
-                x_grid: True
-                y_grid: True
-                ymax: 10
-                x_ticks_minor: 5
-                x_ticks_major: 25
-                background_color: [1,1,1,.2]
-        
-        BoxLayout:
             size_hint: [1, .1]
             orientation: "horizontal"
+            spacing: 5
+            padding: [0,10,0,10]
             Button:
                 text: "START"
                 bold: True
@@ -33,17 +22,51 @@
             Button:
                 text: "SAVE"
                 bold: True
+            TextInput:
+                text: '500'
+                multiline: False
+                input_filter: 'int'
+                on_text: root.adjust_rec_length(self.text)
             Button:
                 text: "QUIT"
                 bold: True
                 on_press: root.quit_app()
+
+        BoxLayout:
+            size_hint: [1, .8]
+            Graph:
+                id: pupil_data_graph
+                xlabel: "Time"
+                ylabel: "Pupil Size"
+                x_grid: True
+                y_grid: True
+                ymax: 10
+                xmax: root.recLength
+                x_ticks_minor: 5
+                x_ticks_major: 25
+                
+                y_ticks_major: 0.5
+                background_color: [1,1,1,.2]
+            
+
         
         BoxLayout:
             size_hint: [1, .1]
-            orientation: "vertical"
+            orientation: "horizontal"
             Label:
+                font_size: 16
                 halign: "left"
                 width: self.width
-                text: str(root.status)
-
-
+                text: str("ZMQ: " + root.zmqStatus)
+            
+            Label:
+                font_size: 16
+                halign: "left"
+                width: self.width
+                text: str("OSC: " + root.oscStatus)
+            
+            Label:
+                font_size: 16
+                halign: "left"
+                width: self.width
+                text: str("Serial: " + root.serStatus)

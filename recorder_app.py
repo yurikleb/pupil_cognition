@@ -1,3 +1,4 @@
+#An App for recording data incoming from Pupil Eye Tracker
 import kivy
 kivy.require('1.10.0')
 from kivy.app import App
@@ -7,29 +8,34 @@ from kivy.garden.graph import MeshLinePlot
 from kivy.properties import *
 from kivy.clock import Clock
 from kivy.logger import Logger
+from kivy.core.window import Window
+
 from threading import Thread
+
 import zmq, msgpack
 from zmq_tools import Msg_Receiver
+
 import csv
 import serial
 
+class Recorder(BoxLayout):
+ 
+    zmqStatus = OptionProperty("Connecting", options=["On", "Off", "Connecting"])
+    oscStatus = OptionProperty("Off", options=["On", "Off", "Connecting"])
+    serStatus = OptionProperty("Off", options=["On", "Off", "Connecting"])        
+    recLength = NumericProperty(500)
 
+    def __init__(self,**kwargs):
 
-class Logic(BoxLayout):
+        Window.size = (1000, 600)
 
-    status = StringProperty("All Good!")
-    recLength = 500
-
-    def __init__(self,):
-
-        super(Logic, self).__init__()
+        super(Recorder, self).__init__(**kwargs)
 
         #Plot settings
         
         self.plot_pupil = MeshLinePlot(color=[1, 0, 0, 1])
-        self.data_graph.xmax = self.recLength
-
-        
+        #self.data_graph.xmax = self.recLength
+      
         #Connect to Lux Sensor on Adafruit feather runing CircuitPython via 
         # try:
         #     ser = serial.Serial('/dev/ttyACM1', 115200, timeout=2)
@@ -58,15 +64,15 @@ class Logic(BoxLayout):
             if poller.poll(2*1000): # 2s timeout in milliseconds
                 ipc_sub_port = requester.recv_string()
             else:
-                raise IOError("Timeout processing socket auth quest")        
+                raise IOError("Timeout processing socket auth quest")
 
             # if connection is established setup message receiver
             sub_url = 'tcp://%s:%s'%(ip,ipc_sub_port)
             self.receiver = Msg_Receiver(ctx, sub_url, topics=('pupil.0',))
-
-            self.status = "Connected to Pupil"                  
+            self.zmqStatus = "On"
         
         except:
+            self.zmqStatus = "Off"
             self.receiver = False
             print("Could not connect to Pupil Service")
 
@@ -75,22 +81,6 @@ class Logic(BoxLayout):
             self.get_data_thread = Thread(target = self.get_data)
             self.get_data_thread.daemon = True
             self.get_data_thread.start()
-
-
-    def start(self):
-        pass
-        self.data_graph.add_plot(self.plot_pupil)
-        Clock.schedule_interval(self.get_value, 0.001)
-
-    def stop(self):
-        Clock.unschedule(self.get_value)
-
-    def quit_app(self):
-        self.is_running = False
-        App.get_running_app().stop()
-        Window.close()
-        print("Closing App...")
-
 
     def get_value(self, dt):
         #Plot the values stored in pupil_values[]
@@ -133,13 +123,32 @@ class Logic(BoxLayout):
 
         print("Data Read Stopped")
 
+    def adjust_rec_length(self, value):
+        if(value):
+            self.recLength = int(value)
+    
+    def start(self):
+        pass
+        self.data_graph.add_plot(self.plot_pupil)
+        Clock.schedule_interval(self.get_value, 0.001)
+
+    def stop(self):
+        Clock.unschedule(self.get_value)
+
+    def quit_app(self):
+        self.is_running = False
+        App.get_running_app().stop()
+        Window.close()
+        print("Closing App...")
+
+
 class RecorderApp(App):
     
     def on_stop(self):
         print('App Closed!')
 
     def build(self):
-        return Logic()
+        return Recorder()
 
 if __name__ == "__main__":
 
