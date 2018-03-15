@@ -9,6 +9,8 @@ from kivy.properties import *
 from kivy.clock import Clock
 from kivy.logger import Logger
 from kivy.core.window import Window
+from kivy.config import ConfigParser
+from kivy.uix.settings import *
 
 from threading import Thread
 
@@ -18,21 +20,25 @@ from zmq_tools import Msg_Receiver
 import csv
 import serial
 
+config = ConfigParser()
+config.read('config.ini')
+
+
 class Recorder(BoxLayout):
- 
-    zmqStatus = OptionProperty("Connecting", options=["On", "Off", "Connecting"])
-    oscStatus = OptionProperty("Off", options=["On", "Off", "Connecting"])
-    serStatus = OptionProperty("Off", options=["On", "Off", "Connecting"])        
-    recLength = NumericProperty(500)
+
+    zmqStatus = OptionProperty("Disconnected", options=["Connected", "Disconnected", "Connecting"])
+    oscStatus = OptionProperty("Disconnected", options=["Connected", "Disconnected", "Connecting"])
+    serStatus = OptionProperty("Disconnected", options=["Connected", "Disconnected", "Connecting"])        
+    recLength = NumericProperty()
 
     def __init__(self,**kwargs):
 
-        Window.size = (1000, 600)
+        Window.size = (1000, 800)
+        self.recLength = config.get('Recorder', 'rec_samples')
 
         super(Recorder, self).__init__(**kwargs)
 
-        #Plot settings
-        
+        #Plot settings        
         self.plot_pupil = MeshLinePlot(color=[1, 0, 0, 1])
         #self.data_graph.xmax = self.recLength
       
@@ -69,10 +75,10 @@ class Recorder(BoxLayout):
             # if connection is established setup message receiver
             sub_url = 'tcp://%s:%s'%(ip,ipc_sub_port)
             self.receiver = Msg_Receiver(ctx, sub_url, topics=('pupil.0',))
-            self.zmqStatus = "On"
+            self.zmqStatus = "Connected"
         
         except:
-            self.zmqStatus = "Off"
+            self.zmqStatus = "Disconnected"
             self.receiver = False
             print("Could not connect to Pupil Service")
 
@@ -84,7 +90,10 @@ class Recorder(BoxLayout):
 
     def get_value(self, dt):
         #Plot the values stored in pupil_values[]
-        self.plot_pupil.points = [(i, j) for i, j in enumerate(self.pupil_values)]
+        if( len(self.pupil_values) < self.recLength ):
+            self.plot_pupil.points = [(i, j) for i, j in enumerate(self.pupil_values)]
+        else:
+            Clock.unschedule(self.get_value)
 
     def get_data(self):
 
@@ -122,10 +131,6 @@ class Recorder(BoxLayout):
             self.pupil_values.append(val)
 
         print("Data Read Stopped")
-
-    def adjust_rec_length(self, value):
-        if(value):
-            self.recLength = int(value)
     
     def start(self):
         pass
@@ -143,12 +148,41 @@ class Recorder(BoxLayout):
 
 
 class RecorderApp(App):
+
     
     def on_stop(self):
         print('App Closed!')
 
     def build(self):
         return Recorder()
+
+    def build_config(self, config):
+        # Set the default values for the configs sections.
+        # config.setdefaults('My Label', {'text': 'Hello', 'font_size': 20})
+        pass
+    
+    def build_settings(self, settings):
+        settings.add_json_panel('Recorder Settings', config, 'settings.json')
+    
+    def on_config_change(self, config, section, key, value):
+
+        # Respond to changes in the configuration.
+
+        Logger.info("recorder_app.py: App.on_config_change: {0}, {1}, {2}, {3}".format(
+            config, section, key, value))
+
+        if section == "Recorder":
+            if key == "rec_samples":
+                self.root.recLength = value
+            # elif key == 'font_size':
+            #     self.root.ids.label.font_size = float(value)
+
+    def close_settings(self, settings=None):
+        
+        # The settings panel has been closed.
+        
+        Logger.info("recorder_app.py: App.close_settings: {0}".format(settings))
+        super(RecorderApp, self).close_settings(settings)        
 
 if __name__ == "__main__":
 
