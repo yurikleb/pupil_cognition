@@ -29,38 +29,39 @@ class Recorder(BoxLayout):
     zmqStatus = OptionProperty("Disconnected", options=["Connected", "Disconnected", "Connecting"])
     oscStatus = OptionProperty("Disconnected", options=["Connected", "Disconnected", "Connecting"])
     serStatus = OptionProperty("Disconnected", options=["Connected", "Disconnected", "Connecting"])        
-    recLength = NumericProperty()
+    recLength = NumericProperty(config.get('Recorder', 'rec_samples'))
+
+    pupil_values = []
+    osc_values = []
+    sensor_values = []
+    
+    last_pupil_plot_Values = []
+    last_sensor_plot_Values = []
+    last_osc_plot_Values = []
 
     def __init__(self,**kwargs):
 
-        Window.size = (1000, 800)
-        self.recLength = config.get('Recorder', 'rec_samples')
-
         super(Recorder, self).__init__(**kwargs)
-
+        Window.size = (1000, 800)
+        
         #Plot settings        
         self.plot_pupil = MeshLinePlot(color=[1, 0, 0, 1])
-        #self.data_graph.xmax = self.recLength
-      
-        #Connect to Lux Sensor on Adafruit feather runing CircuitPython via 
-        # try:
-        #     ser = serial.Serial('/dev/ttyACM1', 115200, timeout=2)
-        #     print("connected to: " + ser.name)
-        # except:
-        #     print("No Serial Found")
-        #     ser = 0 
+        self.plot_sensor = MeshLinePlot(color=[0, 1, 0, 1])
 
-        # Setup ZMQ to get pupil data
-        self.is_running = True
-        self.pupil_values = []
+
+    def zmq_connect(self):
         
+        self.zmqStatus = "Connecting"
+        
+        # Setup ZMQ to get pupil data
+        ctx = zmq.Context()
+        ip = config.get('ZMQ', 'zmq_addr') #If you talk to a different machine use its IP.
+        port = config.get('ZMQ', 'zmq_port') #The port defaults to 50020 but can be set in the GUI of Pupil Capture.
+
         try:
-            ctx = zmq.Context()
-            ip = 'localhost' #If you talk to a different machine use its IP.
-            port = 50020 #The port defaults to 50020 but can be set in the GUI of Pupil Capture.
 
             #Open Pupil Remote socket
-            #Using LINGER and Poller for Socket timeout
+            #Using LINGER and POLLER for Socket timeout check
             requester = ctx.socket(zmq.REQ)        
             requester.setsockopt(zmq.LINGER, 0)
             requester.connect('tcp://%s:%s'%(ip,port))
@@ -75,81 +76,159 @@ class Recorder(BoxLayout):
             # if connection is established setup message receiver
             sub_url = 'tcp://%s:%s'%(ip,ipc_sub_port)
             self.receiver = Msg_Receiver(ctx, sub_url, topics=('pupil.0',))
+            
+            print("ZMQ connected")
             self.zmqStatus = "Connected"
-        
+            self.zmqLog.text = "Waiting for Data..."
+            self.zmqConnectBtn.disabled = True            
         except:
             self.zmqStatus = "Disconnected"
-            self.receiver = False
             print("Could not connect to Pupil Service")
+            self.zmqLog.text = "Could not Connect"
 
         #Start data reading thread    
-        if (self.receiver):
-            self.get_data_thread = Thread(target = self.get_data)
-            self.get_data_thread.daemon = True
-            self.get_data_thread.start()
+        if (self.zmqStatus == "Connected"):
+            self.get_zmq_data_thread = Thread(target = self.get_zmq_data)
+            self.get_zmq_data_thread.daemon = True
+            self.get_zmq_data_thread.start()
 
-    def get_value(self, dt):
-        #Plot the values stored in pupil_values[]
-        if( len(self.pupil_values) < self.recLength ):
-            self.plot_pupil.points = [(i, j) for i, j in enumerate(self.pupil_values)]
-        else:
-            Clock.unschedule(self.get_value)
 
-    def get_data(self):
+    def get_zmq_data(self):
 
-        print("Getting Data")
-
-        # global pupil_values
-
-        while self.is_running == True:
-
-            pupilSize = 0
-            luxValue = 0
-
+        print("ZMQ Thread Started, Getting Data!")
+        while self.zmqStatus == "Connected":           
             try:
-                # if (ser != 0 and ser.inWaiting() > 0):
-                #     line = ser.readline().strip()
-                #     luxValue = float(line)
-                #     print('Lux Value: %s'%(luxValue))
-
                 # receiver is a Msg_Receiver, that returns a topic/payload tuple on recv()
                 topic, payload = self.receiver.recv()
                 pupilSize = payload.get('diameter_3d')
-                print('Pupil Size: %s'%(pupilSize))
-                # data[0].append(pupilSize)
-                # data[1].append(luxValue)
-                # data[2].append(int((time.time() - startTime)*10000))
+                self.zmqLog.text = 'Pupil Size: %s'%(pupilSize)
+                # print('Pupil Size: %s'%(pupilSize))
 
             except:
-                print("oops cant parse data")
+                print("Can't parse ZMQ data")
 
-
-            val = pupilSize
-            if len(self.pupil_values) >= self.recLength:
+            # Reset the all data arrays if pupil record limit is reached
+            if (len(self.pupil_values) >= self.recLength):
                 self.pupil_values = []
+                self.sensor_values = []
+                self.osc_values = []
 
-            self.pupil_values.append(val)
+            # Store latest oncoming value
+            self.pupil_values.append(pupilSize)
 
-        print("Data Read Stopped")
+        print("ZQM Data Reading Thread Stopped!")
+
+
+    def serial_connect(self):
+        
+        # Connect to Srial get data from sensors 
+        # Such as a Lux Sensor on Adafruit feather runing CircuitPython
+        # Serial settings tutorial here:
+        # https://learn.adafruit.com/welcome-to-circuitpython/advanced-serial-console-on-mac-and-linux
+        
+        portAdr = config.get('SERIAL', 'serial_port')
+        baudRate = config.get('SERIAL', 'serial_baud_rate')
+        self.serStatus = "Connecting"
+
+        try:
+            # ser = serial.Serial('/dev/ttyACM0', 115200, timeout=2)
+            ser = serial.Serial(portAdr, baudRate, timeout=2)            
+            
+            print("connected to: " + ser.name)
+            self.serStatus = "Connected"
+            self.serLog.text = "Waiting for Data..."
+            self.serConnectBtn.disabled = True            
+        except:
+            self.serStatus = "Disconnected"
+            print("No Serial Found")
+            self.serLog.text = "Could Not Connect"
+
+        #Start data reading thread    
+        if (self.serStatus == "Connected"):
+            self.get_ser_data_thread = Thread(target = self.get_serial_data, args=(ser,))
+            self.get_ser_data_thread.daemon = True
+            self.get_ser_data_thread.start()
+
+
+    def get_serial_data(self,ser):
+        
+        print("SERIAL Thread Started, Getting Data!")
+        sensorValue = 0.0
+
+        while self.serStatus == "Connected":
+            try:
+                if (ser != 0 and ser.inWaiting() > 0):
+                    line = ser.readline().strip()
+                    sensorValue = float(line)
+                    
+                    vals = (len(self.pupil_values), sensorValue)
+                    self.sensor_values.append(vals)
+                    
+                    self.serLog.text = 'Lux Sensor Value: %s'%(sensorValue)
+                    # print('Lux Sensoer Value: %s'%(sensorValue))           
+                    # print(self.sensor_values)
+            except:
+                print("Can't parse SERIAL data")
+                self.serStatus == "Disconnected"
+            
+
+        print("SERIAL Data Reading Thread Stopped!")
+
+    def plot_pupil_values(self, dt):
+        #Plot the values stored in pupil_values[]
+        if(len(self.pupil_values) < self.recLength):
+            self.plot_pupil.points = [(i, j) for i, j in enumerate(self.pupil_values)]
+            self.plot_sensor.points = [(i, j) for i, j in self.sensor_values]
+        else:
+            self.stop()
     
     def start(self):
-        pass
-        self.data_graph.add_plot(self.plot_pupil)
-        Clock.schedule_interval(self.get_value, 0.001)
+
+        # Start Plotting the Data on the Chart
+        self.pupilDataGraph.add_plot(self.plot_pupil)
+        self.sensorDataGraph.add_plot(self.plot_sensor)
+        # self.pupilDataGraph.add_plot(self.plot_events)
+        
+        self.pupil_values = []
+        self.osc_values = []
+        self.sensor_values = []
+        self.last_pupil_plot_Values = []
+        self.last_sensor_plot_Values = []
+        
+        Clock.schedule_interval(self.plot_pupil_values, 0.001)
 
     def stop(self):
-        Clock.unschedule(self.get_value)
+        # Store the Latest Plot Values 
+        self.last_pupil_plot_Values = list(enumerate(self.pupil_values))
+        self.last_sensor_plot_Values = self.sensor_values
+        # self.last_osc_plot_Values = []
+        Clock.unschedule(self.plot_pupil_values)
+
+    def save_csv_file(self, fileName, dataValues):        
+        with open('datalogs/_datalog_' + fileName +'.csv','w', newline='') as newFile:
+            newFileWriter = csv.writer(newFile)
+            newFileWriter.writerows(dataValues)
+            # print("Saved %s Data:"%(fileName))
+            # print(dataValues)
+
+    def save_data(self):
+        print("Saving Datalogs CSV Files")
+        self.save_csv_file("pupil", self.last_pupil_plot_Values)
+        self.save_csv_file("lux", self.last_sensor_plot_Values)
+
 
     def quit_app(self):
-        self.is_running = False
+        self.zmqStatus = "Disconnected"
+        self.oscStatus = "Disconnected"        
+        self.serStatus = "Disconnected"
+        
         App.get_running_app().stop()
         Window.close()
         print("Closing App...")
 
-
+# MAIN APP WRAPPER CLASS
 class RecorderApp(App):
 
-    
     def on_stop(self):
         print('App Closed!')
 
@@ -184,9 +263,8 @@ class RecorderApp(App):
         Logger.info("recorder_app.py: App.close_settings: {0}".format(settings))
         super(RecorderApp, self).close_settings(settings)        
 
+
+
 if __name__ == "__main__":
-
-    print("###### PUPIL RECORDER #######")
-
     # run app interface
     RecorderApp().run()

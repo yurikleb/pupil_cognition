@@ -93,10 +93,10 @@ plt.show()
 
 
 
-#Save Data to CSV
-# print(data)
-# with open('datalog.csv','w') as newFile:
-#      newFileWriter = csv.writer(newFile)
-#      newFileWriter.writerow(data[0])
-#      newFileWriter.writerow(data[1])
-#      newFileWriter.writerow(data[2])
+# Save Data to CSV
+print(data)
+with open('datalog.csv','w') as newFile:
+     newFileWriter = csv.writer(newFile)
+     newFileWriter.writerow(data[0])
+     newFileWriter.writerow(data[1])
+     newFileWriter.writerow(data[2])
