@@ -12,6 +12,7 @@ from kivy.core.window import Window
 from kivy.config import ConfigParser
 from kivy.uix.settings import *
 
+import time
 from threading import Thread
 
 import zmq, msgpack
@@ -22,6 +23,7 @@ import serial
 
 config = ConfigParser()
 config.read('config.ini')
+
 
 
 class Recorder(BoxLayout):
@@ -38,6 +40,8 @@ class Recorder(BoxLayout):
     last_pupil_plot_Values = []
     last_sensor_plot_Values = []
     last_osc_plot_Values = []
+
+    startTime = time.time()
 
     def __init__(self,**kwargs):
 
@@ -196,6 +200,7 @@ class Recorder(BoxLayout):
         self.last_sensor_plot_Values = []
         
         Clock.schedule_interval(self.plot_pupil_values, 0.001)
+        self.startTime = time.time()
 
     def stop(self):
         # Store the Latest Plot Values 
@@ -204,8 +209,11 @@ class Recorder(BoxLayout):
         # self.last_osc_plot_Values = []
         Clock.unschedule(self.plot_pupil_values)
 
+        print("Recording Duration: %s sec"%(((time.time() - self.startTime))))
+        print("Samples: %s"%(len(self.pupil_values)))
+
     def save_csv_file(self, fileName, dataValues):        
-        with open('datalogs/_datalog_' + fileName +'.csv','w', newline='') as newFile:
+        with open('datalogs/%s_datalog_'%(int(time.time())) + fileName +'.csv','w', newline='') as newFile:
             newFileWriter = csv.writer(newFile)
             newFileWriter.writerows(dataValues)
             # print("Saved %s Data:"%(fileName))
