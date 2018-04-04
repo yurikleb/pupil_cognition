@@ -4,6 +4,8 @@ kivy.require('1.10.0')
 from kivy.app import App
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.textinput import TextInput
+from kivy.uix.popup import Popup
 from kivy.garden.graph import MeshLinePlot
 from kivy.properties import *
 from kivy.clock import Clock
@@ -11,6 +13,11 @@ from kivy.logger import Logger
 from kivy.core.window import Window
 from kivy.config import ConfigParser
 from kivy.uix.settings import *
+
+
+import argparse
+from pythonosc import dispatcher
+from pythonosc import osc_server
 
 import time
 from threading import Thread
@@ -51,6 +58,7 @@ class Recorder(BoxLayout):
         #Plot settings        
         self.plot_pupil = MeshLinePlot(color=[1, 0, 0, 1])
         self.plot_sensor = MeshLinePlot(color=[0, 1, 0, 1])
+        self.plot_osc = MeshLinePlot(color=[0, 0, 1, 1])
 
 
     def zmq_connect(self):
@@ -178,11 +186,48 @@ class Recorder(BoxLayout):
 
         print("SERIAL Data Reading Thread Stopped!")
 
+    
+    def osc_connect(self):
+      #Starts an OSC Server to get events data
+      
+      ip = config.get('OSC', 'osc_addr') #If you talk to a different machine use its IP.
+      port = int(config.get('OSC', 'osc_port')) #The port defaults to 50020 but can be set in the GUI of Pupil Capture.
+      
+      try:
+        
+        dispt = dispatcher.Dispatcher()
+        dispt.map("/event", self.osc_handler)
+
+        self.osc_ser = osc_server.ThreadingOSCUDPServer((ip, port), dispt)
+        self.osc_server_thread = Thread(target=self.osc_ser.serve_forever)
+        self.osc_server_thread.daemon = True
+        self.osc_server_thread.start()
+
+        print("Serving on {}".format(self.osc_ser.server_address))      
+        self.oscStatus = "Connected"
+        self.oscLog.text = "Waiting for Data..."
+        self.oscConnectBtn.disabled = True          
+
+      except:
+        self.oscStatus = "Disconnected"
+        print("Could not start OSC")
+        self.oscLog.text = 'Could not Satrt OSC \nPort %s might be busy'%(port)
+
+
+    def osc_handler(self, addr, args):
+      try:
+        self.oscLog.text = '%s: %s'%(addr, args)
+        vals = (len(self.pupil_values), args)
+        self.osc_values.append(vals)
+        # print('OSC messege on: %s: %s'%(addr, args))
+      except ValueError: pass
+
     def plot_pupil_values(self, dt):
         #Plot the values stored in pupil_values[]
         if(len(self.pupil_values) < self.recLength):
             self.plot_pupil.points = [(i, j) for i, j in enumerate(self.pupil_values)]
             self.plot_sensor.points = [(i, j) for i, j in self.sensor_values]
+            self.plot_osc.points = [(i, j) for i, j in self.osc_values]
         else:
             self.stop()
     
@@ -191,7 +236,7 @@ class Recorder(BoxLayout):
         # Start Plotting the Data on the Chart
         self.pupilDataGraph.add_plot(self.plot_pupil)
         self.sensorDataGraph.add_plot(self.plot_sensor)
-        # self.pupilDataGraph.add_plot(self.plot_events)
+        self.oscDataGraph.add_plot(self.plot_osc)
         
         self.pupil_values = []
         self.osc_values = []
@@ -206,26 +251,23 @@ class Recorder(BoxLayout):
         # Store the Latest Plot Values 
         self.last_pupil_plot_Values = list(enumerate(self.pupil_values))
         self.last_sensor_plot_Values = self.sensor_values
-        # self.last_osc_plot_Values = []
+        self.last_osc_plot_Values = self.osc_values
         Clock.unschedule(self.plot_pupil_values)
 
         print("Recording Duration: %s sec"%(((time.time() - self.startTime))))
         print("Samples: %s"%(len(self.pupil_values)))
 
-    def save_csv_file(self, fileName, dataValues):        
-        with open('datalogs/%s_datalog_'%(int(time.time())) + fileName +'.csv','w', newline='') as newFile:
-            newFileWriter = csv.writer(newFile)
-            newFileWriter.writerows(dataValues)
-            # print("Saved %s Data:"%(fileName))
-            # print(dataValues)
-
     def save_data(self):
         print("Saving Datalogs CSV Files")
-        self.save_csv_file("pupil", self.last_pupil_plot_Values)
-        self.save_csv_file("lux", self.last_sensor_plot_Values)
+        SaveDialog(self.last_pupil_plot_Values, 
+                    self.last_sensor_plot_Values,
+                    self.last_osc_plot_Values).open()
 
 
     def quit_app(self):
+        
+        # self.osc_ser.shutdown()
+
         self.zmqStatus = "Disconnected"
         self.oscStatus = "Disconnected"        
         self.serStatus = "Disconnected"
@@ -233,6 +275,39 @@ class Recorder(BoxLayout):
         App.get_running_app().stop()
         Window.close()
         print("Closing App...")
+
+        exit()
+
+class SaveDialog(Popup):
+
+    pupil_data = []
+    sensor_data = []
+    events_data = []
+
+    def __init__(self, pup_data, sen_data, osc_data, **kwargs):  # my_widget is now the object where popup was called from.
+        super(SaveDialog,self).__init__(**kwargs)
+        
+        self.pupil_data = pup_data
+        self.sensor_data = sen_data
+        self.events_data = osc_data
+        
+        self.fileNameBox.text = "SessionName"      
+
+    
+    def save_csv_file(self, fileName, dataValues):       
+        with open('datalogs/%s_%s_%s.csv'%(int(time.time()), self.fileNameBox.text, fileName),'w', newline='') as newFile:
+            newFileWriter = csv.writer(newFile)
+            newFileWriter.writerows(dataValues)
+            # print("Saved %s Data:"%(fileName))
+            # print(dataValues)
+
+    def save(self,*args):
+        print ("Saving File...")
+        self.save_csv_file("pupil", self.pupil_data)
+        self.save_csv_file("lux", self.sensor_data)
+        self.save_csv_file("evt", self.events_data)
+        self.dismiss()
+
 
 # MAIN APP WRAPPER CLASS
 class RecorderApp(App):

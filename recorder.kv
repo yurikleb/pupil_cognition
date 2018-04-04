@@ -75,7 +75,7 @@
                 y_ticks_major: 50
                 background_color: [1,1,1,.2]
 
-            #Sensor Values Chart
+            #Events Values Chart
             Graph:
                 id: osc_data_graph
                 #xlabel: "Time"
@@ -137,7 +137,7 @@
                             id: osc_connect_btn                        
                             text: 'Connect'
                             on_press: root.osc_connect()
-                            disabled: True
+                            disabled: False
 
                     TextInput:
                         id: osc_log_box
@@ -190,3 +190,37 @@
                     text: "SAVE"
                     bold: True
                     on_press: root.save_data()
+
+
+<SaveDialog>:
+
+    fileNameBox: file_name_box
+
+    title: 'Save File As...'
+    auto_dismiss: False
+    size_hint: [None, None]
+    size: [400, 200]
+    
+    BoxLayout:            
+        
+        orientation: "vertical"
+        spacing: 20
+        padding: [10,10,10,10]
+        
+        TextInput:
+            id: file_name_box
+            size_hint: [1,0.5]
+            font_size: 20
+            background_color: [1,1,1,0.1]
+            foreground_color: [1,1,1,0.7]
+            text: ''
+
+        BoxLayout:
+            orientation: "horizontal"
+            spacing: 20
+            Button:
+                text: 'Save'
+                on_press: root.save()
+            Button:
+                text: 'Cancel'
+                on_release: root.dismiss()                   
