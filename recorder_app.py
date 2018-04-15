@@ -58,7 +58,7 @@ class Recorder(BoxLayout):
         #Plot settings        
         self.plot_pupil = MeshLinePlot(color=[1, 0, 0, 1])
         self.plot_sensor = MeshLinePlot(color=[0, 1, 0, 1])
-        self.plot_osc = MeshLinePlot(color=[0, 0, 1, 1])
+        self.plot_osc = MeshLinePlot(color=[1, .5, .5, 1])
 
 
     def zmq_connect(self):
