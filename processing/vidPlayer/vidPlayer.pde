@@ -8,17 +8,6 @@ OscP5 oscP5;
 /* a NetAddress contains the ip address and port number of a remote location in the network. */
 NetAddress myBroadcastLocation; 
 
-
-int numImages = 10;  //number of images
-PImage[] sunImages = new PImage[numImages];
-PImage[] ctrlImages = new PImage[numImages];
-
-int imgDelay = 2000;
-int sunImgNum = 0;
-int ctrlImgNum = 0;
-
-boolean isImg = false;
-
 void setup() {
   background(100,100,100);
   size(1920, 1080);
@@ -26,7 +15,7 @@ void setup() {
   
   frameRate(30);
 
-  myMovie = new Movie(this, "/media/yurikleb/Stuff/Repos/pupil_cognition/processing/vidPlayer/data/g.mov");
+  myMovie = new Movie(this, "gorilla.mp4");
   myMovie.loop();
   
   oscP5 = new OscP5(this,12000);  
@@ -36,25 +25,27 @@ void setup() {
   
 }
 
+void draw() {
+  
+      image(myMovie, width/2-512, height/2-384,1024,768);
+      
+      //println(frameCount);
+      
+      // Send a "1" if the gorilla is in frame or "0" if no gorilla is in frame.
+      if((frameCount> 850 && frameCount < 1130) || (frameCount> 1920 && frameCount < 2180)){
+        OscMessage myOscMessage = new OscMessage("/event");
+        myOscMessage.add(1);
+        oscP5.send(myOscMessage, myBroadcastLocation);
+      }else {
+        OscMessage myOscMessage = new OscMessage("/event");
+        myOscMessage.add(0);
+        oscP5.send(myOscMessage, myBroadcastLocation);      
+      }
+      
+
+}
 
 // Called every time a new frame is available to read
 void movieEvent(Movie m) {
   m.read();
-}
-
-
-void draw() {
-  
-      image(myMovie, 640, 360);
-      
-      //OscMessage myOscMessage = new OscMessage("/event");
-      //myOscMessage.add(1);
-      //oscP5.send(myOscMessage, myBroadcastLocation); 
-      
-
-}
-
-
-boolean randomBool() {
-  return random(1) > .5;
 }

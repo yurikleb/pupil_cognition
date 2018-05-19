@@ -1,6 +1,7 @@
 ## Packages
 library(data.table)
 library(ggplot2)
+library(plotly)
 
 ## List the files in the folder <---- INSERT THE CORRECT PATH OF THE FILES!
 (f <- list.files("~/Desktop/Experiment_Data/00_PupilRecordings/2018_04_12/Christian/recorder_data", full.names = TRUE, pattern = "\\.csv"))
@@ -18,8 +19,14 @@ setnames(DT, c("date", gsub(".*_(.*).csv", "\\1", f)))
 DT_long <- melt(DT, id = "V1")
 
 ## Plot
-ggplot(DT_long, aes(V1, value, color = variable)) + 
+myPlot <- 
+  ggplot(DT_long, aes(V1, value, color = variable)) + 
   geom_point()
+## + xlim(400,3500) + ylim(0,17)
+
+## Create Interactive Plot
+ggplotly(myPlot)
+
 
 ## Converting to groups
 
@@ -57,7 +64,7 @@ names(long_mat)[1] <- "evt"
 
 #plotting
 ggplot(long_mat, aes(date, pupil, color = evt)) + 
-  geom_point(alpha = .2) +
+  geom_point(alpha = 1) +
   geom_smooth()
 
 
