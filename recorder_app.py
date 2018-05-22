@@ -49,6 +49,7 @@ class Recorder(BoxLayout):
     last_osc_plot_Values = []
 
     startTime = time.time()
+    isRecording = False
 
     def __init__(self,**kwargs):
 
@@ -85,9 +86,10 @@ class Recorder(BoxLayout):
             else:
                 raise IOError("Timeout processing socket auth quest")
 
-            # if connection is established setup message receiver
+            # If connection is established setup message receiver
             sub_url = 'tcp://%s:%s'%(ip,ipc_sub_port)
-            self.receiver = Msg_Receiver(ctx, sub_url, topics=('pupil.0',))
+            # Subscribe to Pupil Data messegaes and recorder notifications
+            self.receiver = Msg_Receiver(ctx, sub_url, topics=('pupil.0','notify.recording',))
             
             print("ZMQ connected")
             self.zmqStatus = "Connected"
@@ -112,21 +114,33 @@ class Recorder(BoxLayout):
             try:
                 # receiver is a Msg_Receiver, that returns a topic/payload tuple on recv()
                 topic, payload = self.receiver.recv()
-                pupilSize = payload.get('diameter_3d')
-                self.zmqLog.text = 'Pupil Size: %s'%(pupilSize)
-                # print('Pupil Size: %s'%(pupilSize))
 
+                # Get Pupil Values
+                if ('pupil' in topic):
+                    pupilSize = payload.get('diameter_3d')
+                    self.zmqLog.text = 'Pupil Size: %s'%(pupilSize)
+                    # print('Pupil Size: %s'%(pupilSize))
+        
+                    # Reset the all data arrays if pupil record limit is reached
+                    if (len(self.pupil_values) >= self.recLength):
+                        self.pupil_values = []
+                        self.sensor_values = []
+                        self.osc_values = []
+
+                    # Store latest incoming pupil size value
+                    self.pupil_values.append(pupilSize)
+                
+                # Get Pupil recorder updates
+                if ('notify.recording' in topic):
+                    
+                    if(topic == 'notify.recording.started'):
+                        self.start()
+
+                    if(topic == 'notify.recording.stopped'):
+                        self.stop()
             except:
                 print("Can't parse ZMQ data")
 
-            # Reset the all data arrays if pupil record limit is reached
-            if (len(self.pupil_values) >= self.recLength):
-                self.pupil_values = []
-                self.sensor_values = []
-                self.osc_values = []
-
-            # Store latest oncoming value
-            self.pupil_values.append(pupilSize)
 
         print("ZQM Data Reading Thread Stopped!")
 
@@ -246,14 +260,23 @@ class Recorder(BoxLayout):
         
         Clock.schedule_interval(self.plot_pupil_values, 0.001)
         self.startTime = time.time()
-
+        
+        self.isRecording = True
+        self.recStopBtn.disabled = False
+        
+        print("Recording started")
+    
     def stop(self):
         # Store the Latest Plot Values 
         self.last_pupil_plot_Values = list(enumerate(self.pupil_values))
         self.last_sensor_plot_Values = self.sensor_values
         self.last_osc_plot_Values = self.osc_values
         Clock.unschedule(self.plot_pupil_values)
+        
+        self.isRecording = False
+        self.recStopBtn.disabled = True
 
+        print("Recording Stopped")
         print("Recording Duration: %s sec"%(((time.time() - self.startTime))))
         print("Samples: %s"%(len(self.pupil_values)))
 
@@ -262,7 +285,6 @@ class Recorder(BoxLayout):
         SaveDialog(self.last_pupil_plot_Values, 
                     self.last_sensor_plot_Values,
                     self.last_osc_plot_Values).open()
-
 
     def quit_app(self):
         

@@ -12,6 +12,9 @@
     oscLog: osc_log_box
     serLog: ser_log_box
 
+    recStartBtn: rec_start_btn
+    recStopBtn: rec_stop_btn
+
 
     BoxLayout:
         
@@ -179,11 +182,14 @@
                 spacing: 20
                 padding: [10,10,10,0]
                 Button:
+                    id: rec_start_btn
                     text: "START"
                     bold: True
                     on_press: root.start()
                 Button:
+                    id: rec_stop_btn
                     text: "STOP"
+                    disabled: True
                     bold: True
                     on_press: root.stop()
                 Button:
