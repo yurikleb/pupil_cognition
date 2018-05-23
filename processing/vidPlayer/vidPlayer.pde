@@ -10,8 +10,8 @@ NetAddress myBroadcastLocation;
 
 void setup() {
   background(100,100,100);
-  size(1920, 1080);
-  //fullScreen();
+  //size(1920, 1080);
+  fullScreen();yuri0
   
   frameRate(30);
 
@@ -32,7 +32,8 @@ void draw() {
       //println(frameCount);
       
       // Send a "1" if the gorilla is in frame or "0" if no gorilla is in frame.
-      if((frameCount> 850 && frameCount < 1130) || (frameCount> 1920 && frameCount < 2180)){
+      //at 30fps 850-1130, 1920-2180
+      if((frameCount> 250 && frameCount < 350) || (frameCount> 675 && frameCount < 765)){
         OscMessage myOscMessage = new OscMessage("/event");
         myOscMessage.add(1);
         oscP5.send(myOscMessage, myBroadcastLocation);
