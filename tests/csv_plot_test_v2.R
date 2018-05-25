@@ -1,10 +1,12 @@
 ## Packages
+library(dygraphs)
 library(data.table)
 library(ggplot2)
 library(plotly)
 
 ## List the files in the folder <---- INSERT THE CORRECT PATH OF THE FILES!
-(f <- list.files("/home/yurikleb/Desktop/Experiment_Data/00_PupilRecordings/2018_04_12/Christian/recorder_data", full.names = TRUE, pattern = "\\.csv"))
+Path <- "/home/yurikleb/Desktop/Experiment_Data/MAIN/2018_04_12/Christian/recorder_data"
+(f <- list.files(Path, full.names = TRUE, pattern = "\\.csv"))
 
 ## Read all the files into a list
 l <- lapply(f, fread)
@@ -13,17 +15,25 @@ l <- lapply(f, fread)
 DT <- Reduce(function(...) merge(..., by = "V1", all = TRUE), l)
 setnames(DT, c("sample", gsub(".*_(.*).csv", "\\1", f)))
 
-## Convert to long format for plotting
-DT_long <- melt(DT, id = "sample")
+## draw dygraph
+dygraph(DT) %>%
+  dySeries("evt", color = "#c44e39") %>%
+  dySeries("lux", color = "#f4e242") %>%
+  dySeries("pupil", color = "#3ac44a") %>%
+  dyOptions(pointSize = 5) %>%
+  dyRangeSelector(height = 20)
 
-## Simple Plot of Values
-myPlot <- 
-  ggplot(DT_long, aes(sample, value, color = variable)) + 
-  geom_point()
-## + xlim(400,3500) + ylim(0,17)
-
-## Create Interactive Plot
-ggplotly(myPlot)
+# ## Convert to long format for plotting
+# DT_long <- melt(DT, id = "sample")
+# 
+# ## Simple Plot of Values
+# myPlot <- 
+#   ggplot(DT_long, aes(sample, value, color = variable)) + 
+#   geom_point()
+# ## + xlim(400,3500) + ylim(0,17)
+# 
+# ## Create Interactive Plot
+# ggplotly(myPlot)
 
 
 ## Converting to groups
@@ -37,8 +47,8 @@ mat <- data.table(mapply(`:`, indx$sample, indx$sample + range_var - 1))
 setnames(mat, as.character(indx$evt))
 
 # melting
-long_mat <- melt(mat)
-levels(long_mat$variable) <- levels(long_mat$variable)
+long_mat <- melt(mat, variable.factor = FALSE)
+#levels(long_mat$variable) <- levels(long_mat$variable)
 
 # Adding pupil
 long_mat[, pupil := DT[long_mat$value, pupil]]

@@ -11,7 +11,7 @@ NetAddress myBroadcastLocation;
 void setup() {
   background(100,100,100);
   //size(1920, 1080);
-  fullScreen();yuri0
+  fullScreen();
   
   frameRate(30);
 
