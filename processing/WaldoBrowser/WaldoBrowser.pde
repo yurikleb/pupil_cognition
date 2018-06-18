@@ -22,7 +22,7 @@ boolean isImg = false;
 //boolean isImgTriggerSent = false;
 
 //stages of the presentation 1: instructions 2:examples 3:experiment etc...
-int stage = 3; 
+int stage = 1; 
 int contentStartTime = 0;
 
 //boolean isInstructions = true;
@@ -31,8 +31,8 @@ int contentStartTime = 0;
 
 void setup() {
   background(0,0,0);
-  size(1920, 1080);
-  //fullScreen();
+  //size(1920, 1080);
+  fullScreen();
   
   frameRate(framerate);
   
@@ -109,7 +109,6 @@ void draw() {
   //  String c = minutes + ":" + seconds + ":" + milli;
   //  text(c, width/2, 40);
   //}
-  
 
 }
 

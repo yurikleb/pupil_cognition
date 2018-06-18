@@ -4,39 +4,50 @@ library(data.table)
 library(ggplot2)
 library(plotly)
 
+options(digits=12)
 
-
-multmerge = function(mypath)
-{
-    filenames=list.files(path=mypath, full.names=TRUE)
-    datalist = lapply(filenames, function(x){read.csv(file=x,header=T)})
-    Reduce(function(x,y) {merge(x,y)}, datalist)
+multimerge = function(mypath, keycol, selcol){
+  
+  ## List the files in the folder <---- INSERT THE CORRECT PATH OF THE FILES!
+  Path <- mypath
+  (f <- list.files(Path, full.names = TRUE, pattern = "\\.csv"))
+  
+  ## Read all the files into a list
+  l <- lapply(f, fread, select = selcol)
+  # invisible(mapply(function(x, y) setnames(x, 2, y), l, paste0("V", (1:length(l) + 1))))
+  
+  # Merge all the files into a data.table
+  Reduce(function(...) merge(..., by = keycol, all = TRUE), l)
+  # setnames(DT, c("sample", gsub(".*_(.*).csv", "\\1", f)))
 }
 
+colsFilter <- c("sample", "evt", "lux", "pupil_size")
+DT1 = multimerge("/home/yurikleb/Desktop/test_merge/recorder_data", "sample", colsFilter)
 
-## List the files in the folder <---- INSERT THE CORRECT PATH OF THE FILES!
-Path <- "/home/yurikleb/Desktop/test_merge/recorder_data"
-(f <- list.files(Path, full.names = TRUE, pattern = "\\.csv"))
+colsFilter <- c("timestamp", "fp_id", "fp_duration", "diameter_3d", "index")
+DT2 = multimerge("/home/yurikleb/Desktop/test_merge/exports/0-7042/selected", "timestamp", colsFilter)
 
 
-mymergeddata = multmerge(path)
+initialPupil <- DT1[1,pupil_size]
+indx <-  which.max(DT2$diameter_3d == initialPupil) - 1
+DT2 <- tail(DT2, -indx)
 
-## Read all the files into a list
-l <- lapply(f, fread)
-invisible(mapply(function(x, y) setnames(x, 2, y), l, paste0("V", (1:length(l) + 1))))
+# DT3 <- merge(DT1,DT2, by = "row.names", all=TRUE)
+indx <-  min(nrow(DT1), nrow(DT2))
+DT3 <- cbind(head(DT1, indx), head(DT2, indx))
+DT3
+# write.csv(DT1, file = "/home/yurikleb/Desktop/test_merge/recorder_data/merged.csv",row.names=FALSE, na="")
 
-# Merge all the files into a data.table
-DT <- Reduce(function(...) merge(..., by = "V1", all = TRUE), l)
-setnames(DT, c("sample", gsub(".*_(.*).csv", "\\1", f)))
+
 
 ## draw dygraph
-dygraph(DT) %>%
+dygraph(DT1) %>%
   # dySeries("pupilPosX", color = "#ff9999") %>%
   # dySeries("pupilPosY", color = "#99fff3") %>%
   # dySeries("pupilPosZ", color = "#ad99ff") %>%
   dySeries("evt", color = "#c44e39") %>%
   dySeries("lux", color = "#ffa500") %>%
-  dySeries("pupil", color = "#3ac44a") %>%
+  dySeries("pupil_size", color = "#3ac44a") %>%
   dyOptions(pointSize = 5) %>%
   dyRangeSelector(height = 20)
 
