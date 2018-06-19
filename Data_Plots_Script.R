@@ -4,39 +4,77 @@ library(data.table)
 library(ggplot2)
 library(plotly)
 
+options(digits=12)
 
+mainFilesPath = "/home/yurikleb/Desktop/test_merge/"
 
-multmerge = function(mypath)
-{
-    filenames=list.files(path=mypath, full.names=TRUE)
-    datalist = lapply(filenames, function(x){read.csv(file=x,header=T)})
-    Reduce(function(x,y) {merge(x,y)}, datalist)
+multimerge = function(mypath, keycol, selcol){
+  
+  ##List the files in the folder
+  Path <- mypath
+  (f <- list.files(Path, full.names = TRUE, pattern = "\\.csv"))
+  
+  ## Read all the files into a list
+  l <- lapply(f, fread, select = selcol)
+
+  # Merge all the files into a data.table
+  Reduce(function(...) merge(..., by = keycol, all = TRUE), l)
+
 }
 
 
-## List the files in the folder <---- INSERT THE CORRECT PATH OF THE FILES!
-Path <- "/home/yurikleb/Desktop/test_merge/recorder_data"
-(f <- list.files(Path, full.names = TRUE, pattern = "\\.csv"))
+######## Merge all "Recorder App Data" tables
+folderPath <- paste(mainFilesPath, "recorder_data/", sep = "")
+colsFilter <- c("sample", "evt", "lux", "pupil_size")
+DT1 = multimerge(folderPath, "sample", colsFilter)
+DT1
 
 
-mymergeddata = multmerge(path)
+######## Merge all "Pupil Player Data" exported Tables
+# Prepare the files to merge
+# Copy pupil_positions.csv to "selected" folder
+# Adjust fixation.csv column names and copy to "selected" folder 
+if (!file.exists(file.path(mainFilesPath, "exports/selected/"))){
+  dir.create(file.path(mainFilesPath, "exports/selected/"))
+}
 
-## Read all the files into a list
-l <- lapply(f, fread)
-invisible(mapply(function(x, y) setnames(x, 2, y), l, paste0("V", (1:length(l) + 1))))
+file.copy(paste0(mainFilesPath, "exports/pupil_positions.csv"),paste0(mainFilesPath, "exports/selected/pupil_positions.csv"))
 
-# Merge all the files into a data.table
-DT <- Reduce(function(...) merge(..., by = "V1", all = TRUE), l)
-setnames(DT, c("sample", gsub(".*_(.*).csv", "\\1", f)))
+cols <- c("id", "start_timestamp", "duration")
+f <- fread(paste0(mainFilesPath, "exports/fixations.csv"), select = cols)
+setnames(f, cols, c("fp_id", "timestamp", "fp_duration"))
+fwrite(f, file = paste0(mainFilesPath, "exports/selected/fixations.csv"))         
+
+# Merge the "selected" files
+folderPath <- paste0(mainFilesPath, "exports/selected/")
+colsFilter <- c("timestamp", "start_timestamp", "fp_id", "fp_duration", "diameter_3d", "index")
+DT2 = multimerge(folderPath, "timestamp", colsFilter)
+DT2
+
+
+# Trim the top extra values from "Pupil Player Data"
+# So "Recorder_Data" and "Pupil Player Data" start from the same point in time.
+initialPupil <- DT1[1,pupil_size]
+indx <-  which.max(DT2$diameter_3d == initialPupil) - 1
+DT2 <- tail(DT2, -indx)
+
+# Merge DT1 and DT2
+indx <-  min(nrow(DT1), nrow(DT2))
+DT3 <- cbind(head(DT1, indx), head(DT2, indx))
+DT3
+
+#Save as a  SCV 
+fwrite(DT3, file = file.path(mainFilesPath, "Fused_Data.csv"))
+
 
 ## draw dygraph
-dygraph(DT) %>%
+dygraph(DT1) %>%
   # dySeries("pupilPosX", color = "#ff9999") %>%
   # dySeries("pupilPosY", color = "#99fff3") %>%
   # dySeries("pupilPosZ", color = "#ad99ff") %>%
   dySeries("evt", color = "#c44e39") %>%
   dySeries("lux", color = "#ffa500") %>%
-  dySeries("pupil", color = "#3ac44a") %>%
+  dySeries("pupil_size", color = "#3ac44a") %>%
   dyOptions(pointSize = 5) %>%
   dyRangeSelector(height = 20)
 
