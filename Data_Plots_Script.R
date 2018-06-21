@@ -6,7 +6,7 @@ library(plotly)
 
 options(digits=12)
 
-mainFilesPath = "/home/yurikleb/Desktop/test_merge/"
+mainFilesPath = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/openDay/2018_06_09/subject_33_good_fast/"
 
 multimerge = function(mypath, keycol, selcol){
   
@@ -21,6 +21,14 @@ multimerge = function(mypath, keycol, selcol){
   Reduce(function(...) merge(..., by = keycol, all = TRUE), l)
 
 }
+
+#Add Cols Titles
+# myPath <- "/home/yurikleb/Desktop/aaaa/"
+# f <- list.files(myPath, full.names = TRUE, pattern = "\\.csv")
+# f[3]
+# ff <- fread(paste0(myPath, "1528519056_subject_19_evt.csv"))
+# setnames(ff,c("sample","pupil_size")) 
+# fwrite(f, file = paste0(myPath, "exports/selected/fixations.csv"))     
 
 
 ######## Merge all "Recorder App Data" tables
@@ -47,7 +55,9 @@ fwrite(f, file = paste0(mainFilesPath, "exports/selected/fixations.csv"))
 
 # Merge the "selected" files
 folderPath <- paste0(mainFilesPath, "exports/selected/")
-colsFilter <- c("timestamp", "start_timestamp", "fp_id", "fp_duration", "diameter_3d", "index")
+colsFilter <- c("timestamp", "start_timestamp", "fp_id", "fp_duration", "diameter_3d", "index", 
+                "circle_3d_center_x", "circle_3d_center_y", "circle_3d_center_z",
+                "circle_3d_normal_x", "circle_3d_normal_y", "circle_3d_normal_z")
 DT2 = multimerge(folderPath, "timestamp", colsFilter)
 DT2
 
@@ -56,27 +66,33 @@ DT2
 # So "Recorder_Data" and "Pupil Player Data" start from the same point in time.
 initialPupil <- DT1[1,pupil_size]
 indx <-  which.max(DT2$diameter_3d == initialPupil) - 1
-DT2 <- tail(DT2, -indx)
+DT2 = tail(DT2, -indx)
 
 # Merge DT1 and DT2
 indx <-  min(nrow(DT1), nrow(DT2))
-DT3 <- cbind(head(DT1, indx), head(DT2, indx))
+DT3 = cbind(head(DT1, indx), head(DT2, indx))
 DT3
 
 #Save as a  SCV 
 fwrite(DT3, file = file.path(mainFilesPath, "Fused_Data.csv"))
 
 
+# Convert fixation poitn IDs to fives (5)
+DT3[fp_id > 0, fp_id := 5]
 ## draw dygraph
-dygraph(DT1) %>%
+DT_Plot <- DT3[,.(sample,evt,lux,pupil_size,fp_id)]
+dygraph(DT_Plot) %>%
   # dySeries("pupilPosX", color = "#ff9999") %>%
   # dySeries("pupilPosY", color = "#99fff3") %>%
   # dySeries("pupilPosZ", color = "#ad99ff") %>%
   dySeries("evt", color = "#c44e39") %>%
   dySeries("lux", color = "#ffa500") %>%
   dySeries("pupil_size", color = "#3ac44a") %>%
+  dySeries("fp_id", color = "#5c5c5c") %>%
   dyOptions(pointSize = 5) %>%
   dyRangeSelector(height = 20)
+
+
 
 ## Convert to long format for plotting
 DT_long <- melt(DT, id = "sample")
@@ -91,6 +107,8 @@ myPlot <-
 ggplotly(myPlot)
 
 
+
+########### PART2 #############
 ## Converting to groups
 range_var <- 600
 
