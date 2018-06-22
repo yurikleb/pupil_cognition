@@ -72,11 +72,46 @@ DT2 = tail(DT2, -indx)
 indx <-  min(nrow(DT1), nrow(DT2))
 DT3 = cbind(head(DT1, indx), head(DT2, indx))
 DT3
+# view(DT3)
 
 #Save as a  SCV 
 fwrite(DT3, file = file.path(mainFilesPath, "Fused_Data.csv"))
 
 
+# Analyze Fixation Points
+# DT3[fp_id > 0, .(fp_id,pupil_size,fp_duration)]
+# Get samples around fixation point 
+
+# Get the row index of a specifix fixation point
+# fp <- 4
+# fpIdx <- DT3[fp_id == fp, which = TRUE]
+# fpIdx
+
+range = 480
+
+fpPaddingData = function(fpNum){
+  fpIdx <- DT3[fp_id == fpNum, which = TRUE]
+  DT3[(fpIdx - range / 2):(fpIdx+ range / 2), .(sample, evt,lux,pupil_size, fp_id)]
+}
+
+# Get a List of all fixation points
+fp_list <- DT3[fp_id>0, fp_id]
+# Create a list of padding data around all fixations points
+FP_DATA <- lapply(fp_list, fpPaddingData)
+FP_DATA
+
+fpToPlot <- 6
+dygraph(FP_DATA[[fpToPlot]]) %>%
+  dySeries("evt", color = "#c44e39") %>%
+  dySeries("lux", color = "#ffa500") %>%
+  dySeries("pupil_size", color = "#3ac44a") %>%
+  dySeries("fp_id", color = "#5c5c5c") %>%
+  dyOptions(pointSize = 5) %>%
+  dyRangeSelector(height = 20)
+
+#################
+#PLOT DATA
+#################
 # Convert fixation poitn IDs to fives (5)
 DT3[fp_id > 0, fp_id := 5]
 ## draw dygraph
