@@ -1,0 +1,104 @@
+---
+title: "Fixation Points Analysis"
+output:
+  html_document:
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(htmltools)
+library(dygraphs)
+library(data.table)
+
+library(ggplot2)
+library(plotly)
+
+options(digits=12)
+fileToPlot = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/2018_04_12_Sunny/Christian/recorder_data/Fused_Data.csv"
+mainData = fread(fileToPlot)
+
+```
+
+<h3>Data Overview:</h3>
+
+```{r mainfig, fig.height = 6, fig.width = 9, fig.align = "center", echo=FALSE}
+
+
+## draw dygraph (without fixation points, which will be added later as "Event Marks")
+DT_Plot <- mainData[,.(sample,evt,lux,pupil_size)]
+mainPlot <- dygraph(DT_Plot) %>%
+  dySeries("evt", color = "#c44e39") %>%
+  dySeries("lux", color = "#ffa500") %>%
+  dySeries("pupil_size", color = "#3ac44a") %>%
+  dyOptions(pointSize = 5) %>%
+  dyAxis("x", drawGrid = FALSE) %>%
+  dyRangeSelector(height = 20)
+
+# Show the Plot
+mainPlot
+
+```
+
+<p></br>EVT Values Index:</p>
+<ul>
+<li>1 - Sunny image (Darker) </li>
+<li>0.5 - No Sun Image (Brighter) </li>
+</ul>
+
+
+<h3>Data Ovelaps:</h3>
+
+```{r Data-Load, echo=FALSE}
+
+range = 600
+
+evtPaddingData = function(fpNum){
+  fpIdx <- mainData[sample == fpNum, which = TRUE]
+  data <- mainData[fpIdx:(fpIdx + range), .(pupil_size, evt, lux)]
+  # evtVal <- mainData[fpIdx,evt]
+  #setnames(data,"pupil_size", toString(evtVal))
+  # add sample number column to the data
+  data$sample <- seq.int(nrow(data))
+  data
+}
+
+# Get a List of all events
+evt_list <- mainData[evt>0, sample]
+evt_list
+# Create a list of padding data around all fixations points
+EVT_DATA <- lapply(evt_list, evtPaddingData)
+print(paste0("Total Events: ", length(EVT_DATA)))
+
+```
+
+<!-- <div style="background-color:lightblue; width:80%"> -->
+
+<h3>Events Breakdown:</h3>
+
+```{r Data-Plots, echo=FALSE}
+
+fpPlot = function(plotData){
+
+  dg <- dygraph(plotData[,.(sample,evt,pupil_size, lux)], main = plotData[evt > 0, evt], width = 400, height = 250) %>%
+    dyOptions(pointSize = 5) %>%
+    dyRangeSelector(height = 20)
+
+  # wrap the graph in a div with a "inline-block" property to render sevral graphs in a row
+  htmltools::tags$div(dg, style = "padding:10px; width: 420px; border: solid #eee 1px; display:inline-block;")
+
+}
+
+# d <- do.call(cbind, EVT_DATA)
+# d$sample <- seq.int(nrow(d))
+# d
+# dygraph(d[,c("sample","0.5","1")])
+
+res <- lapply(EVT_DATA, fpPlot)
+htmltools::tagList(res)
+
+```
+
+<!-- </div> -->
+

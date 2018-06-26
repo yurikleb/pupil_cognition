@@ -1,0 +1,112 @@
+---
+title: "Pupil Size Analysis"
+output:
+  html_document:
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(htmltools)
+library(dygraphs)
+library(data.table)
+library(plotly)
+
+options(digits=12)
+fileToPlot = "/home/yurikleb/recordings/fused_data/subject_30_glasses/Fused_Data.csv"
+mainData = fread(fileToPlot)
+
+```
+
+<h3>Data Overview:</h3>
+
+```{r mainfig, fig.height = 6, fig.width = 9, fig.align = "center", echo=FALSE}
+
+# DT3[fp_id > 0, fp_id := 5]
+## draw dygraph (without fixation points, which will be added later as "Event Marks")
+DT_Plot <- mainData[,.(sample,evt,lux,pupil_size)]
+mainPlot <- dygraph(DT_Plot) %>%
+  # dySeries("pupilPosX", color = "#ff9999") %>%
+  # dySeries("pupilPosY", color = "#99fff3") %>%
+  # dySeries("pupilPosZ", color = "#ad99ff") %>%
+  dySeries("evt", color = "#c44e39") %>%
+  dySeries("lux", color = "#ffa500") %>%
+  dySeries("pupil_size", color = "#3ac44a") %>%
+  # dySeries("fp_id", color = "#5c5c5c") %>%
+  dyOptions(pointSize = 5) %>%
+  dyAxis("x", drawGrid = FALSE) %>%
+  dyRangeSelector(height = 20)
+
+# Add fixation points as events
+fp_list <- mainData[fp_id>0, sample]
+
+for (i in fp_list){
+  fpLabel <- paste0("fp-", mainData[sample == i, fp_id])
+  mainPlot <- mainPlot %>% dyEvent(i, label = fpLabel, labelLoc = "bot", color = '#666')
+}
+
+# Show the Plot
+mainPlot
+
+```
+
+<p></br>EVT Values Index:</p>
+<ul>
+<li>1 - Instructions image </li>
+<li>2 - Example image </li>
+<li>3 - Man Content image </li>
+<li>0.5 - User pressed "SPACE" </li>
+</ul>
+
+
+<h3>Filtering Data By Fixation Points:</h3>
+```{r Data-Load, echo=FALSE}
+
+range = 400
+
+fpPaddingData = function(fpNum){
+  fpIdx <- mainData[fp_id == fpNum, which = TRUE]
+  mainData[(fpIdx - range / 2):(fpIdx+ range / 2), .(sample, evt,lux,pupil_size, fp_id)]
+}
+
+# Get a List of all fixation points
+fp_list <- mainData[fp_id>0, fp_id]
+# Create a list of padding data around all fixations points
+FP_DATA <- lapply(fp_list, fpPaddingData)
+print(paste0("Total Fixation Points: ", length(FP_DATA)))
+
+```
+
+<!-- <div style="background-color:lightblue; width:80%"> -->
+
+<h3>Fixation Poits Breakdown:</h3>
+```{r Data-Plots, echo=FALSE}
+
+fpPlot = function(plotData){
+  
+  # evtVal <- plotData[evt > 0, evt]
+  # fpVal <- plotData[fp_id > 0, fp_id]
+  # print(paste0("FP: ", fpVal, " EVT: ", evtVal, sep = " "))
+  
+  dg <- dygraph(plotData[,.(sample,evt,lux,pupil_size)], main = plotData[fp_id > 0, fp_id], width = 400, height = 250) %>%
+    dySeries("evt", color = "#c44e39") %>%
+    dySeries("lux", color = "#ffa500") %>%
+    dySeries("pupil_size", color = "#3ac44a") %>%
+    # dyEvent(plotData[evt == 3, sample], "EVT", labelLoc = "bottom") %>%
+    dyEvent(plotData[fp_id > 0, sample], "FP", labelLoc = "bottom") %>%
+    dyOptions(pointSize = 5) %>%
+    dyRangeSelector(height = 20)
+  
+  
+  # wrap the graph in a div with a "inline-block" property to render sevral graphs in a row
+  htmltools::tags$div(dg, style = "padding:10px; width: 420px; border: solid #eee 1px; display:inline-block;")
+}
+
+res <- lapply(FP_DATA, fpPlot)
+htmltools::tagList(res)
+
+```
+
+<!-- </div> -->
+

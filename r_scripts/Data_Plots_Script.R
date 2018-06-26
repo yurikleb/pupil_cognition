@@ -22,20 +22,30 @@ multimerge = function(mypath, keycol, selcol){
 
 }
 
-#Add Cols Titles
-# myPath <- "/home/yurikleb/Desktop/aaaa/"
-# f <- list.files(myPath, full.names = TRUE, pattern = "\\.csv")
-# f[3]
-# ff <- fread(paste0(myPath, "1528519056_subject_19_evt.csv"))
-# setnames(ff,c("sample","pupil_size")) 
-# fwrite(f, file = paste0(myPath, "exports/selected/fixations.csv"))     
+# Add Column Titles inside recorder_data - CSVs
+myPath <- "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/2018_04_12_Sunny/Christian/recorder_data"
+fl <- list.files(myPath, full.names = TRUE, pattern = "\\.csv")
+fl
 
+f <- fread(fl[[1]])
+setnames(f, c("sample","evt"))
+fwrite(f, file = fl[[1]])
+
+f <- fread(fl[[2]])
+setnames(f, c("sample","lux"))
+fwrite(f, file = fl[[2]])
+
+f <- fread(fl[[3]])
+setnames(f, c("sample","pupil_size"))
+fwrite(f, file = fl[[3]])
 
 ######## Merge all "Recorder App Data" tables
-folderPath <- paste(mainFilesPath, "recorder_data/", sep = "")
+folderPath <- myPath #paste(mainFilesPath, "recorder_data/", sep = "")
 colsFilter <- c("sample", "evt", "lux", "pupil_size")
 DT1 = multimerge(folderPath, "sample", colsFilter)
-DT1
+
+# DT1
+# fwrite(DT1, file = file.path(folderPath, "Fused_Data.csv"))
 
 
 ######## Merge all "Pupil Player Data" exported Tables
@@ -87,7 +97,7 @@ fwrite(DT3, file = file.path(mainFilesPath, "Fused_Data.csv"))
 # fpIdx <- DT3[fp_id == fp, which = TRUE]
 # fpIdx
 
-range = 480
+range = 6
 
 fpPaddingData = function(fpNum){
   fpIdx <- DT3[fp_id == fpNum, which = TRUE]
@@ -109,6 +119,7 @@ dygraph(FP_DATA[[fpToPlot]]) %>%
   dyOptions(pointSize = 5) %>%
   dyRangeSelector(height = 20)
 
+
 #################
 #PLOT DATA
 #################
@@ -127,8 +138,6 @@ dygraph(DT_Plot) %>%
   dyOptions(pointSize = 5) %>%
   dyRangeSelector(height = 20)
 
-
-
 ## Convert to long format for plotting
 DT_long <- melt(DT, id = "sample")
 
@@ -142,10 +151,12 @@ myPlot <-
 ggplotly(myPlot)
 
 
+fileToPlot = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/2018_04_12_Sunny/Christian/recorder_data/Fused_Data.csv"
+DT = fread(fileToPlot)
 
 ########### PART2 #############
 ## Converting to groups
-range_var <- 600
+range_var <- 10
 
 ## find all non-NA evt
 indx <- DT[!is.na(evt), .(sample = sample - 1, evt)]
@@ -162,7 +173,7 @@ long_mat <- melt(mat, variable.factor = FALSE, id = "indx")[, `:=`(indx = NULL, 
 #levels(long_mat$variable) <- levels(long_mat$variable)
 
 # Adding pupil
-long_mat[, pupil := DT[long_mat$value, pupil]]
+long_mat[, pupil_size := DT[long_mat$value, pupil_size]]
 
 # validating
 long_mat[, .N, by = variable]
@@ -179,9 +190,11 @@ long_mat[, sample := 1:range_var]
 #renaming variable to evt
 names(long_mat)[1] <- "evt"
 
+wide_mat <- dcast(long_mat)
+
 #plotting
 myPlot2 <- 
-  ggplot(long_mat, aes(sample, pupil, color = evt)) + 
+  ggplot(long_mat, aes(sample, pupil_size, color = evt)) + 
   geom_point(alpha = 0.5) +
   geom_smooth()
 
