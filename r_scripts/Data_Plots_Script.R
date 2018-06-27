@@ -151,12 +151,14 @@ myPlot <-
 ggplotly(myPlot)
 
 
-fileToPlot = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/2018_04_12_Sunny/Christian/recorder_data/Fused_Data.csv"
+# Christian, Kato, Nisho, Tsuchi
+
+fileToPlot = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/openDay_WaldoExp/2018_06_09/subject_12_Midori_bitNoisy/Fused_Data.csv"
 DT = fread(fileToPlot)
 
 ########### PART2 #############
 ## Converting to groups
-range_var <- 10
+range_var <- 360
 
 ## find all non-NA evt
 indx <- DT[!is.na(evt), .(sample = sample - 1, evt)]
@@ -190,14 +192,13 @@ long_mat[, sample := 1:range_var]
 #renaming variable to evt
 names(long_mat)[1] <- "evt"
 
-wide_mat <- dcast(long_mat)
-
 #plotting
-myPlot2 <- 
+# myPlot2 <- 
   ggplot(long_mat, aes(sample, pupil_size, color = evt)) + 
-  geom_point(alpha = 0.5) +
+  geom_point(alpha = 0.1) +
+  theme(legend.position="none") +
   geom_smooth()
 
-ggplotly(myPlot2)
+# ggplotly(myPlot2)
 
 

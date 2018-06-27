@@ -29,11 +29,12 @@ mainData = fread(fileToPlot)
 ## draw dygraph (without fixation points, which will be added later as "Event Marks")
 DT_Plot <- mainData[,.(sample,evt,lux,pupil_size)]
 mainPlot <- dygraph(DT_Plot) %>%
-  dySeries("evt", color = "#c44e39") %>%
-  dySeries("lux", color = "#ffa500") %>%
+  dySeries("evt", color = "#c44e39", strokeWidth = 3) %>%
+  dySeries("lux", color = "#ffa500", strokeWidth = 3) %>%
   dySeries("pupil_size", color = "#3ac44a") %>%
   dyOptions(pointSize = 5) %>%
   dyAxis("x", drawGrid = FALSE) %>%
+  dyRoller(rollPeriod = 1) %>%
   dyRangeSelector(height = 20)
 
 # Show the Plot
@@ -48,28 +49,53 @@ mainPlot
 </ul>
 
 
-<h3>Data Ovelaps:</h3>
+<h3>Event Data Ovelapped:</h3>
 
-```{r Data-Load, echo=FALSE}
+```{r Data-Load, echo=FALSE, fig.width=9, fig.height=6}
 
-range = 600
+range_var <- 600
 
-evtPaddingData = function(fpNum){
-  fpIdx <- mainData[sample == fpNum, which = TRUE]
-  data <- mainData[fpIdx:(fpIdx + range), .(pupil_size, evt, lux)]
-  # evtVal <- mainData[fpIdx,evt]
-  #setnames(data,"pupil_size", toString(evtVal))
-  # add sample number column to the data
-  data$sample <- seq.int(nrow(data))
-  data
-}
+DT <- mainData
 
-# Get a List of all events
-evt_list <- mainData[evt>0, sample]
-evt_list
-# Create a list of padding data around all fixations points
-EVT_DATA <- lapply(evt_list, evtPaddingData)
-print(paste0("Total Events: ", length(EVT_DATA)))
+## find all non-NA evt
+indx <- DT[!is.na(evt), .(sample = sample - 1, evt)]
+
+## matrix of indx + range_var
+mat <- data.table(mapply(`:`, indx$sample, indx$sample + range_var - 1))
+# setnames(mat, as.character(indx$evt))
+setnames(mat, paste0(as.character(indx$evt), "_", seq_along(indx$evt)))
+mat[, indx := .I] 
+
+# melting
+# long_mat <- melt(mat, variable.factor = FALSE)
+long_mat <- melt(mat, variable.factor = FALSE, id = "indx")[, `:=`(indx = NULL, variable = sub("_.*", "", variable))]
+#levels(long_mat$variable) <- levels(long_mat$variable)
+
+# Adding pupil
+long_mat[, pupil_size := DT[long_mat$value, pupil_size]]
+
+# validating
+long_mat[, .N, by = variable]
+
+# creating groups of range_var
+long_mat[, grp := (0:(.N - 1)) %/% range_var]
+
+#validating
+long_mat[, .N, by = .(variable, grp)]
+
+# Assiging sample range
+long_mat[, sample := 1:range_var]
+
+#renaming variable to evt
+names(long_mat)[1] <- "evt"
+
+#plotting
+# myPlot2 <- 
+  ggplot(long_mat, aes(sample, pupil_size, color = evt)) + 
+  geom_point(alpha = 0.1) +
+  geom_smooth()
+
+# ggplotly(myPlot2)
 
 ```
 
@@ -79,9 +105,21 @@ print(paste0("Total Events: ", length(EVT_DATA)))
 
 ```{r Data-Plots, echo=FALSE}
 
+#Samples Difuser
+range = 600
+evtPaddingData = function(fpNum){
+  fpIdx <- mainData[sample == fpNum, which = TRUE]
+  data <- mainData[fpIdx:(fpIdx + range), .(sample, pupil_size, evt, lux)]
+  data
+}
+
+#Plot generator
 fpPlot = function(plotData){
 
   dg <- dygraph(plotData[,.(sample,evt,pupil_size, lux)], main = plotData[evt > 0, evt], width = 400, height = 250) %>%
+    dySeries("evt", color = "#c44e39") %>%
+    dySeries("lux", color = "#ffa500") %>%
+    dySeries("pupil_size", color = "#3ac44a") %>%
     dyOptions(pointSize = 5) %>%
     dyRangeSelector(height = 20)
 
@@ -90,11 +128,20 @@ fpPlot = function(plotData){
 
 }
 
+
+# Get a List of all events
+evt_list <- mainData[evt>0, sample]
+# Create a list of padding data around all fixations points
+EVT_DATA <- lapply(evt_list, evtPaddingData)
+print(paste0("Total Events: ", length(EVT_DATA)))
+
+
 # d <- do.call(cbind, EVT_DATA)
 # d$sample <- seq.int(nrow(d))
 # d
 # dygraph(d[,c("sample","0.5","1")])
 
+#Create a plot for each event
 res <- lapply(EVT_DATA, fpPlot)
 htmltools::tagList(res)
 
