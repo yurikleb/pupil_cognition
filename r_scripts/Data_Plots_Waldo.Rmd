@@ -14,8 +14,10 @@ library(data.table)
 library(plotly)
 
 options(digits=12)
-fileToPlot = "/home/yurikleb/recordings/fused_data/subject_30_glasses/Fused_Data.csv"
+fileToPlot = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/openDay_WaldoExp/2018_06_09/subject_12_Midori_bitNoisy/Fused_Data.csv"
 mainData = fread(fileToPlot)
+
+mainData[evt>0, sample]
 
 ```
 
@@ -36,6 +38,7 @@ mainPlot <- dygraph(DT_Plot) %>%
   # dySeries("fp_id", color = "#5c5c5c") %>%
   dyOptions(pointSize = 5) %>%
   dyAxis("x", drawGrid = FALSE) %>%
+  dyRoller(rollPeriod = 1) %>%
   dyRangeSelector(height = 20)
 
 # Add fixation points as events
@@ -65,15 +68,16 @@ mainPlot
 
 range = 400
 
-fpPaddingData = function(fpNum){
+fpDataSamples = function(fpNum){
   fpIdx <- mainData[fp_id == fpNum, which = TRUE]
-  mainData[(fpIdx - range / 2):(fpIdx+ range / 2), .(sample, evt,lux,pupil_size, fp_id)]
+  fpDuration <- mainData[fpIdx, fp_duration] %/% 8.3
+  mainData[fpIdx:(fpIdx + fpDuration), .(sample, evt,lux,pupil_size, fp_id)]
 }
 
 # Get a List of all fixation points
 fp_list <- mainData[fp_id>0, fp_id]
-# Create a list of padding data around all fixations points
-FP_DATA <- lapply(fp_list, fpPaddingData)
+#Create dataset of al samples during the fixation point
+FP_DATA <- lapply(fp_list, fpDataSamples)
 print(paste0("Total Fixation Points: ", length(FP_DATA)))
 
 ```
@@ -89,7 +93,9 @@ fpPlot = function(plotData){
   # fpVal <- plotData[fp_id > 0, fp_id]
   # print(paste0("FP: ", fpVal, " EVT: ", evtVal, sep = " "))
   
-  dg <- dygraph(plotData[,.(sample,evt,lux,pupil_size)], main = plotData[fp_id > 0, fp_id], width = 400, height = 250) %>%
+  title <- paste0("FpID:", plotData[fp_id > 0, fp_id], " mPS:", plotData[, mean(pupil_size)] )
+  
+  dg <- dygraph(plotData[,.(sample,evt,lux,pupil_size)], main = title, width = 400, height = 250) %>%
     dySeries("evt", color = "#c44e39") %>%
     dySeries("lux", color = "#ffa500") %>%
     dySeries("pupil_size", color = "#3ac44a") %>%
