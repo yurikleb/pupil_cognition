@@ -151,15 +151,15 @@ myPlot <-
 ggplotly(myPlot)
 
 
-# Christian, Kato, Nisho, Tsuchi
+# Christian , Nisho, Tsuchi
 
-fileToPlot = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/openDay_WaldoExp/2018_06_09/subject_28/Fused_Data.csv"
+fileToPlot = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/openDay_WaldoExp/2018_06_09/subject_30_glasses/Fused_Data.csv"
 DT = fread(fileToPlot)
 
 # Remove instructions images events
 dtl =  DT[,.N]
 DT[evt > 0,.(sample,evt)]
-DT = DT[ 4709:dtl,]
+DT = DT[ 3654:dtl,]
 DT[evt > 0,.(sample,evt)]
 
 ########### PART2 #############
@@ -202,9 +202,9 @@ names(long_mat)[1] <- "evt"
 # myPlot2 <- 
   ggplot(long_mat, aes(sample, pupil_size, color = evt)) + 
   geom_point(alpha = 0.1) +
-  # ylim(1,5) +
-  # theme(legend.position="none") +
-  geom_smooth()
+  ylim(3.5,6.5) +
+  theme(legend.position="none") +
+  geom_smooth(se = FALSE, size = 2)
 
 # ggplotly(myPlot2)
 

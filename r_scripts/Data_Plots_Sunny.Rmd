@@ -16,7 +16,7 @@ library(ggplot2)
 library(plotly)
 
 options(digits=12)
-fileToPlot = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/2018_04_12_Sunny/Christian/recorder_data/Fused_Data.csv"
+fileToPlot = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/2018_04_12_Sunny/Yuri_01/recorder_data/Fused_Data.csv"
 mainData = fread(fileToPlot)
 
 ```

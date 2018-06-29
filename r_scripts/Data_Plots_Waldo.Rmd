@@ -14,8 +14,9 @@ library(data.table)
 library(plotly)
 
 options(digits=12)
-fileToPlot = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/openDay_WaldoExp/2018_06_09/subject_12_Midori_bitNoisy/Fused_Data.csv"
-mainData = fread(fileToPlot)
+dataDir = "/media/yurikleb/Yuri_IDE_07477204021/DesignLab/CV/ExperimentData/MAIN/openDay_WaldoExp/2018_06_09/subject_28/"
+fileToPlot = "Fused_Data.csv"
+mainData = fread(paste0(dataDir,fileToPlot))
 
 mainData[evt>0, sample]
 
@@ -66,19 +67,25 @@ mainPlot
 <h3>Filtering Data By Fixation Points:</h3>
 ```{r Data-Load, echo=FALSE}
 
-range = 400
+# range = 400
 
 fpDataSamples = function(fpNum){
   fpIdx <- mainData[fp_id == fpNum, which = TRUE]
   fpDuration <- mainData[fpIdx, fp_duration] %/% 8.3
-  mainData[fpIdx:(fpIdx + fpDuration), .(sample, evt,lux,pupil_size, fp_id)]
+  mainData[fpIdx:(fpIdx + fpDuration), .(sample, evt,lux,pupil_size, fp_id, evt_group)]
 }
 
+#Find which event each Fixation-Point belongs to (for later avereging and grouping).
+indx = mainData[is.na(fp_id), .SD[mainData[fp_id > 0], last(evt[!is.na(evt)]), on = .(sample <= sample), by = .EACHI]]
+mainData[indx$sample+1, evt_group := indx$V1]
+
 # Get a List of all fixation points
-fp_list <- mainData[fp_id>0, fp_id]
+fp_list <- mainData[fp_id > 0, fp_id]
 #Create dataset of al samples during the fixation point
 FP_DATA <- lapply(fp_list, fpDataSamples)
 print(paste0("Total Fixation Points: ", length(FP_DATA)))
+#
+
 
 ```
 
@@ -87,13 +94,17 @@ print(paste0("Total Fixation Points: ", length(FP_DATA)))
 <h3>Fixation Poits Breakdown:</h3>
 ```{r Data-Plots, echo=FALSE}
 
+
+
 fpPlot = function(plotData){
   
-  # evtVal <- plotData[evt > 0, evt]
-  # fpVal <- plotData[fp_id > 0, fp_id]
-  # print(paste0("FP: ", fpVal, " EVT: ", evtVal, sep = " "))
+  fpId <- plotData[fp_id > 0, fp_id]
+  mps <- plotData[, mean(pupil_size)]
+  evtg <- plotData[fp_id > 0, evt_group]
+  title <- paste0("FpID:", fpId)
   
-  title <- paste0("FpID:", plotData[fp_id > 0, fp_id], " mPS:", plotData[, mean(pupil_size)] )
+  # Add FP average pupil size to main data
+  mainData[fp_id == fpId, mean_fp_ps := mps]
   
   dg <- dygraph(plotData[,.(sample,evt,lux,pupil_size)], main = title, width = 400, height = 250) %>%
     dySeries("evt", color = "#c44e39") %>%
@@ -106,12 +117,45 @@ fpPlot = function(plotData){
   
   
   # wrap the graph in a div with a "inline-block" property to render sevral graphs in a row
-  htmltools::tags$div(dg, style = "padding:10px; width: 420px; border: solid #eee 1px; display:inline-block;")
+  htmltools::tags$div(dg, style = "padding:10px; width: 420px; border: solid #eee 1px; display:inline-block; text-align: center;",
+                      "Mean Pupil Size:", mps,
+                      " // Event Group: ", evtg)
 }
 
 res <- lapply(FP_DATA, fpPlot)
 htmltools::tagList(res)
 
+
+```
+
+<h3> Fixation Points Average Pupil Size Per Event Group: </h3>
+
+```{r fp-sumary, echo=FALSE}
+
+# Create a dataset of average pupil sizes of all fization points grouped by related events
+
+# List of all possible Event Values (See index Above)
+e <- c(0.5, 1, 2, 3)
+
+# Create empty data.tabele for the result
+avgPS_FP_data <- data.table(
+  evt = numeric(),
+  mean_ps = numeric())
+
+# calculate group avereges
+for (i in e) {
+  avgPS_FP_data <- rbind(avgPS_FP_data, mainData[evt_group == i, .(evt = i, mean_ps = mean(mean_fp_ps))])
+}
+
+# shwow result
+avgPS_FP_data
+
+dygraph(avgPS_FP_data, main = "Summary", width = 600, height = 350) %>%
+    dySeries("mean_ps", color = "#ffa500") %>%
+    dyOptions(drawPoints = TRUE, pointSize = 5)
+
+fwrite(avgPS_FP_data, file = file.path(dataDir, "FpAveragesByEvents.csv"))
+# mainData[evt_group == e, .(fp_id, evt_group, mean_fp_ps)]
 ```
 
 <!-- </div> -->
