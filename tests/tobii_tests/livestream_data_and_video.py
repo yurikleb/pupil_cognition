@@ -60,7 +60,7 @@ def mksock(peer):
 def send_keepalive_msg(socket, msg, peer):
     while running:
         print("Sending " + msg + " to target " + peer[0] + " socket no: " + str(socket.fileno()) + "\n")
-        socket.sendto(msg, peer)
+        socket.sendto(msg.encode(), peer)
         time.sleep(timeout)
 
 
@@ -77,6 +77,7 @@ def stop_sending_msg():
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     peer = (GLASSES_IP, PORT)
+    print(peer)
 
     # Create socket which will send a keep alive message for the live data stream
     data_socket = mksock(peer)
@@ -105,10 +106,10 @@ if __name__ == "__main__":
     while running:
         # Read live data
         data, address = data_socket.recvfrom(1024)
-        json_data = json.loads(data)
+        json_data = json.loads(data.decode())
         
         if 'pd' in json_data:
-            print data
+            print(json_data)
             # json_data['pd']
 
         # state_change_return, state, pending_state = pipeline.get_state(0)
