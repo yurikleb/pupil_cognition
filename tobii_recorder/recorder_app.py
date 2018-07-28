@@ -41,7 +41,7 @@ class Recorder(BoxLayout):
     serStatus = OptionProperty("Disconnected", options=["Connected", "Disconnected", "Connecting"])        
     recLength = NumericProperty(config.get('Recorder', 'rec_samples'))
 
-    pupil_values = []
+    pupil_values = {"d_left" : [], "d_right": []}
     osc_values = []
     sensor_values = []
     
@@ -57,8 +57,9 @@ class Recorder(BoxLayout):
         super(Recorder, self).__init__(**kwargs)
         Window.size = (1000, 800)
         
-        #Plot settings        
-        self.plot_pupil = MeshLinePlot(color=[1, 0, 0, 1])
+        #Plots settings        
+        self.plot_r_pupil = MeshLinePlot(color=[1, 0, 0, 1])
+        self.plot_l_pupil = MeshLinePlot(color=[0, 1, 0, 1])
         self.plot_sensor = MeshLinePlot(color=[0, 1, 0, 1])
         self.plot_osc = MeshLinePlot(color=[1, .5, .5, 1])
 
@@ -70,7 +71,7 @@ class Recorder(BoxLayout):
             iptype = socket.AF_INET6
         return socket.socket(iptype, socket.SOCK_DGRAM)
 
-    # Callback function
+    # Keep Communication with Tobii Alive
     def send_keepalive_msg(self, socket, msg, peer):
 
         timeout = 1.0
@@ -108,13 +109,13 @@ class Recorder(BoxLayout):
 
             print("Connected to Eye Tracker")
             self.eyeTrackerStatus = "Connected"
-            self.zmqLog.text = "Waiting for Data..."
+            self.pupilLog.text = "Waiting for Data..."
             self.zmqConnectBtn.disabled = True        
         except Exception as e:
             self.eyeTrackerStatus = "Disconnected"
             print("Could not connect to Eye Tracker")
             print(str(e))
-            self.zmqLog.text = "Could not Connect"
+            self.pupilLog.text = "Could not Connect"
 
         #Start data reading thread    
         if (self.eyeTrackerStatus == "Connected"):
@@ -136,18 +137,27 @@ class Recorder(BoxLayout):
                 
                 # Get Pupil Values
                 if ('pd' in json_data):
-                    pupilSize = json_data['pd']
-                    self.zmqLog.text = 'Pupil Size: %s'%(pupilSize)
-                    print(json_data)
         
                     # Reset the all data arrays if pupil record limit is reached
-                    if (len(self.pupil_values) >= self.recLength):
-                        self.pupil_values = []
+                    if ((len(self.pupil_values["d_right"]) >= self.recLength) or  
+                        (len(self.pupil_values["d_left"]) >= self.recLength) ):
+                        
+                        self.pupil_values["d_left"] = []
+                        self.pupil_values["d_right"] = []
                         self.sensor_values = []
                         self.osc_values = []
 
+                    pupilSize = json_data['pd']
+
+                    if (json_data['eye'] == "right"):
+                        self.pupil_values["d_right"].append(pupilSize)
+                    elif (json_data['eye'] == "left"):
+                        self.pupil_values["d_left"].append(pupilSize)
+                    
+                    self.pupilLog.text = 'Pupil Size: \nL:%s \nR:%s'%(self.pupil_values["d_left"][-1],self.pupil_values["d_right"][-1])
+                    print(json_data)
+
                     # Store latest incoming pupil size value
-                    self.pupil_values.append(pupilSize)
                 
                 # Get Tracker recorder updates
                 # if ('notify.recording' in topic):
@@ -208,7 +218,7 @@ class Recorder(BoxLayout):
                     line = ser.readline().strip()
                     sensorValue = float(line)
                     
-                    vals = (len(self.pupil_values), sensorValue)
+                    vals = (len(self.pupil_values["d_right"]), sensorValue)
                     self.sensor_values.append(vals)
                     
                     self.serLog.text = 'Lux Sensor Value: %s'%(sensorValue)
@@ -252,15 +262,16 @@ class Recorder(BoxLayout):
     def osc_handler(self, addr, args):
       try:
         self.oscLog.text = '%s: %s'%(addr, args)
-        vals = (len(self.pupil_values), args)
+        vals = (len(self.pupil_values["d_right"]), args)
         self.osc_values.append(vals)
         # print('OSC messege on: %s: %s'%(addr, args))
       except ValueError: pass
 
     def plot_pupil_values(self, dt):
-        #Plot the values stored in pupil_values[]
-        if(len(self.pupil_values) < self.recLength):
-            self.plot_pupil.points = [(i, j) for i, j in enumerate(self.pupil_values)]
+        #Plot the values stored in pupil_values{}
+        if(len(self.pupil_values["d_right"]) < self.recLength):
+            self.plot_r_pupil.points = [(i, j) for i, j in enumerate(self.pupil_values["d_right"])]
+            self.plot_l_pupil.points = [(i, j) for i, j in enumerate(self.pupil_values["d_left"])]
             self.plot_sensor.points = [(i, j) for i, j in self.sensor_values]
             self.plot_osc.points = [(i, j) for i, j in self.osc_values]
         else:
@@ -269,11 +280,13 @@ class Recorder(BoxLayout):
     def start(self):
 
         # Start Plotting the Data on the Chart
-        self.pupilDataGraph.add_plot(self.plot_pupil)
+        self.pupilDataGraph.add_plot(self.plot_r_pupil)
+        self.pupilDataGraph.add_plot(self.plot_l_pupil)
         self.sensorDataGraph.add_plot(self.plot_sensor)
         self.oscDataGraph.add_plot(self.plot_osc)
         
-        self.pupil_values = []
+        self.pupil_values["d_right"] = []
+        self.pupil_values["d_left"] = []
         self.osc_values = []
         self.sensor_values = []
         self.last_pupil_plot_Values = []
@@ -289,7 +302,7 @@ class Recorder(BoxLayout):
     
     def stop(self):
         # Store the Latest Plot Values 
-        self.last_pupil_plot_Values = list(enumerate(self.pupil_values))
+        self.last_pupil_plot_Values = list(enumerate(self.pupil_values["d_right"]))
         self.last_sensor_plot_Values = self.sensor_values
         self.last_osc_plot_Values = self.osc_values
         Clock.unschedule(self.plot_pupil_values)
@@ -299,7 +312,7 @@ class Recorder(BoxLayout):
 
         print("Recording Stopped")
         print("Recording Duration: %s sec"%(((time.time() - self.startTime))))
-        print("Samples: %s"%(len(self.pupil_values)))
+        print("Samples: %s"%(len(self.pupil_values["d_right"])))
 
     def save_data(self):
         print("Saving Datalogs CSV Files")

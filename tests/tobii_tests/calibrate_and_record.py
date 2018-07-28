@@ -102,7 +102,8 @@ def stop_recording(recording_id):
 def send_event():
     try:
         print "Sending event..."
-        data = {'ets': 100, 'type': 'BigEvent', 'tag': 123}
+        data = {'ets': 0, 'type': 'BigEvent', 'tag': 0
+        }
         url = base_url + '/api/events'
         req = urllib2.Request(url)
         req.add_header('Content-Type', 'application/json')
@@ -148,9 +149,9 @@ if __name__ == "__main__":
         print ('Recording started...')
         start_recording(recording_id)
         
-        time.sleep(10)
+        time.sleep(3)
         send_event()
-        time.sleep(10)
+        time.sleep(3)
         
         stop_recording(recording_id)
         status = wait_for_status('/api/recordings/' + recording_id + '/status', 'rec_state', ['failed', 'done'])
