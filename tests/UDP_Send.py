@@ -49,7 +49,6 @@ if __name__ == "__main__":
       sensor_data = float(data.decode());
       print(sensor_data)
       
-
       # if data:
       #     sent = sock.sendto(data, address)
       #     print('sent {} bytes back to {}'.format(

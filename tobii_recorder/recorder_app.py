@@ -131,7 +131,6 @@ class Recorder(BoxLayout):
         
         while self.eyeTrackerStatus == "Connected":           
             try:
-                
                 data, address = streamed_data_socket.recvfrom(1024)
                 json_data = json.loads(data.decode())
                 
@@ -155,7 +154,7 @@ class Recorder(BoxLayout):
                         self.pupil_values["d_left"].append(pupilSize)
                     
                     self.pupilLog.text = 'Pupil Size: \nL:%s \nR:%s'%(self.pupil_values["d_left"][-1],self.pupil_values["d_right"][-1])
-                    print(json_data)
+                    # print(json_data)
 
                     # Store latest incoming pupil size value
                 

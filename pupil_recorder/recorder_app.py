@@ -1,6 +1,6 @@
 #An App for recording data incoming from Pupil Eye Tracker
 import kivy
-kivy.require('1.10.0')
+kivy.require('1.9.1')
 from kivy.app import App
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
