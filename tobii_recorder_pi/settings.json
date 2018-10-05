@@ -1,0 +1,69 @@
+[
+    {
+        "type": "title",
+        "title": "General"
+    },
+    {
+        "type": "numeric",
+        "title": "Samples To Record",
+        "desc": "Choose the text that appears in the label",
+        "section": "Recorder",
+        "key": "rec_samples"
+    },    
+
+    {
+        "type": "title",
+        "title": "EYETRACKER"
+    },
+    {
+        "type": "string",
+        "title": "Address",
+        "desc": "Choose the text that appears in the label",
+        "section": "EYETRACKER",
+        "key": "trk_addr"
+    },
+    {
+        "type": "numeric",
+        "title": "Port",
+        "desc": "Choose the font size the label",
+        "section": "EYETRACKER",
+        "key": "trk_port"
+    },
+
+    {
+        "type": "title",
+        "title": "OSC"
+    },
+    {
+        "type": "string",
+        "title": "Address",
+        "desc": "Choose the text that appears in the label",
+        "section": "OSC",
+        "key": "osc_addr"
+    },
+    {
+        "type": "numeric",
+        "title": "Port",
+        "desc": "Choose the font size the label",
+        "section": "OSC",
+        "key": "osc_port"
+    },
+    {
+        "type": "title",
+        "title": "SERIAL"
+    },
+    {
+        "type": "string",
+        "title": "Port",
+        "desc": "Choose the text that appears in the label",
+        "section": "SERIAL",
+        "key": "serial_port"
+    },
+    {
+        "type": "numeric",
+        "title": "Baud Rate",
+        "desc": "Choose the font size the label",
+        "section": "SERIAL",
+        "key": "serial_baud_rate"
+    }        
+]

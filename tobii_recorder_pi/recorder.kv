@@ -1,0 +1,232 @@
+<Recorder>:
+
+    pupilDataGraph: pupil_data_graph
+    oscDataGraph: osc_data_graph
+    sensorDataGraph: sensor_data_graph
+    
+    zmqConnectBtn: eye_tracker_connect_btn
+    oscConnectBtn: osc_connect_btn
+    serConnectBtn: ser_connect_btn
+
+    pupilLog: zmq_log_box
+    oscLog: osc_log_box
+    serLog: ser_log_box
+
+    recStartBtn: rec_start_btn
+    recStopBtn: rec_stop_btn
+
+
+    BoxLayout:
+        
+        orientation: "vertical"
+        padding: [10,10,10,10]        
+
+
+        #Top Control Pannel
+        BoxLayout:
+            size_hint: [1, .06]
+            orientation: "horizontal"
+            spacing: 5
+            padding: [0,5,0,5]
+            Label:
+                size_hint: [.7, 1]
+                font_size: 20
+                text: '[ Cognitive Pupil Recorder v.0.1.1 ]'
+            Button:
+                size_hint: [.15, 1]
+                text: "Settings"
+                bold: True
+                on_press: app.open_settings()
+            Button:
+                size_hint: [.15, 1]
+                text: "QUIT"
+                bold: True
+                on_press: root.quit_app()
+
+
+        #Data Charts
+        BoxLayout:
+            size_hint: [1, .6]
+            orientation: "vertical"
+            
+            #Pupil Values Charts
+            Graph:
+                id: pupil_data_graph
+                title: "Pupil Values"
+                #xlabel: "Time"
+                ylabel: "Pupil Size"
+                x_grid: True
+                y_grid: True
+                ymax: 10
+                xmax: root.recLength
+                x_ticks_minor: 5
+                x_ticks_major: 25
+                y_ticks_major: 0.5
+                background_color: [1,1,1,.2]
+            
+            #Sensor Values Chart
+            Graph:
+                id: sensor_data_graph
+                #xlabel: "Time"
+                ylabel: "Sensor Value"
+                x_grid: True
+                y_grid: True
+                ymax: 1000
+                xmax: root.recLength
+                x_ticks_minor: 5
+                x_ticks_major: 100
+                y_ticks_major: 50
+                background_color: [1,1,1,.2]
+
+            #Events Values Chart
+            Graph:
+                id: osc_data_graph
+                #xlabel: "Time"
+                ylabel: "OSC Events"
+                x_grid: True
+                y_grid: True
+                ymax: 1.2
+                xmax: root.recLength
+                x_ticks_minor: 5
+                x_ticks_major: 100
+                y_ticks_major: 0.5
+                background_color: [1,1,1,.2]
+
+        #Bottom Control Pannel 
+        BoxLayout:
+            size_hint: [1, .34]
+            orientation: "horizontal"
+            
+            #Input Cannels Settings 
+            BoxLayout:
+                orientation: "vertical"
+                padding: [10,10,10,0]
+                spacing: 20
+                
+                #Eye Tracker
+                BoxLayout:
+                    orientation: "horizontal"
+                    spacing: 30
+                    BoxLayout:
+                        orientation: "vertical"
+                        size_hint: [0.3,1]
+                        Label:
+                            text: str("Tracker: " + root.eyeTrackerStatus)
+                        Button:
+                            id: eye_tracker_connect_btn                        
+                            text: 'Connect'
+                            on_press: root.eye_tracker_connect()
+
+                    TextInput:
+                        id: zmq_log_box
+                        size_hint: [0.7,1]
+                        background_color: [1,1,1,0.1]
+                        foreground_color: [1,1,1,0.7]
+                        text_size: self.size
+                        halign: 'left'
+                        valign: 'center'
+                        text: 'Log...'
+                
+                #OSC
+                BoxLayout:
+                    orientation: "horizontal"
+                    spacing: 30
+                    BoxLayout:
+                        orientation: "vertical"
+                        size_hint: [0.3,1]
+                        Label:
+                            text: str("OSC: " + root.oscStatus)
+                        Button:
+                            id: osc_connect_btn                        
+                            text: 'Connect'
+                            on_press: root.osc_connect()
+                            disabled: False
+
+                    TextInput:
+                        id: osc_log_box
+                        size_hint: [0.7,1]
+                        background_color: [1,1,1,0.1]
+                        foreground_color: [1,1,1,0.7]
+                        text_size: self.size
+                        halign: 'left'
+                        valign: 'center'
+                        text: 'Log...'
+
+                #SERIAL
+                BoxLayout:
+                    orientation: "horizontal"
+                    spacing: 30
+                    BoxLayout:
+                        orientation: "vertical"
+                        size_hint: [0.3,1]
+                        Label:
+                            text: str("Sensor: " + root.senStatus)
+                        Button:
+                            id: ser_connect_btn                        
+                            text: 'Connect'
+                            on_press: root.sensor_connect()
+
+                    TextInput:
+                        id: ser_log_box
+                        size_hint: [0.7,1]
+                        background_color: [1,1,1,0.1]
+                        foreground_color: [1,1,1,0.7]                        
+                        text_size: self.size
+                        halign: 'left'
+                        valign: 'center'
+                        text: 'Log...'
+            
+            #Control Buttons
+            BoxLayout:
+                orientation: "vertical"
+                spacing: 20
+                padding: [10,10,10,0]
+                Button:
+                    id: rec_start_btn
+                    text: "START"
+                    bold: True
+                    on_press: root.start()
+                Button:
+                    id: rec_stop_btn
+                    text: "STOP"
+                    disabled: True
+                    bold: True
+                    on_press: root.stop()
+                Button:
+                    text: "SAVE"
+                    bold: True
+                    on_press: root.save_data()
+
+
+<SaveDialog>:
+
+    fileNameBox: file_name_box
+
+    title: 'Save File As...'
+    auto_dismiss: False
+    size_hint: [None, None]
+    size: [400, 200]
+    
+    BoxLayout:            
+        
+        orientation: "vertical"
+        spacing: 20
+        padding: [10,10,10,10]
+        
+        TextInput:
+            id: file_name_box
+            size_hint: [1,0.5]
+            font_size: 20
+            background_color: [1,1,1,0.1]
+            foreground_color: [1,1,1,0.7]
+            text: ''
+
+        BoxLayout:
+            orientation: "horizontal"
+            spacing: 20
+            Button:
+                text: 'Save'
+                on_press: root.save()
+            Button:
+                text: 'Cancel'
+                on_release: root.dismiss()                   
