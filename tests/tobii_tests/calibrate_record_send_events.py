@@ -2,8 +2,9 @@
     Example for how to create a project, participant, calibration and recording.
     In order to make the calibration pass the keep-alive messages needs to be sent.
 
-    Note: Adapted and tested on Python 3.6 by Yurikleb from original example provided by Tobii
-          Also added a function that sends an external event to the glasses (See page 21 in the API Doc).
+    Note:
+    Adapted and tested on Python 3.6 by Yurikleb from original example provided by Tobii
+    Also added a function that sends an external event to the glasses (See page 21 in the API Doc).
 """
 
 import urllib.request
@@ -177,7 +178,7 @@ if __name__ == "__main__":
 
         # Sending External Events
         eventType = 'luxVal'
-        eventTag = 12.08  # can be json (see API docs page 21)
+        eventTag = '12.08'  # can be json (see API docs page 21)
         time.sleep(2)
         send_event(eventType, eventTag)
         time.sleep(2)
