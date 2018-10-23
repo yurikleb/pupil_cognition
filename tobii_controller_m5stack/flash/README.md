@@ -1,0 +1,1 @@
+If you want to upload these project files to your devices, the files must create in the diretory named flash.
