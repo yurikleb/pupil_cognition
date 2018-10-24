@@ -46,8 +46,12 @@ def post_request(api_action, data=None):
     data = json.dumps(data)
     response = urllib.request.urlopen(req, data.encode())
     data = response.read()
-    json_data = json.loads(data)
-    return json_data
+
+    try:
+        json_data = json.loads(data)
+        return json_data
+    except ValueError:
+        return data
 
 
 def wait_for_status(api_action, key, values):
@@ -66,6 +70,18 @@ def wait_for_status(api_action, key, values):
     return json_data[key]
 
 
+def send_event(evtType, evtTag):
+    data = {'ets': 0, 'type': evtType, 'tag': evtTag}
+    data = post_request('/api/events', data)
+    print(data)
+
+    # url = base_url + '/api/events'
+    # req = urllib.request.Request(url)
+    # req.add_header('Content-Type', 'application/json')
+    # response = urllib.request.urlopen(req, (json.dumps(data)).encode())
+    # print(response)
+
+
 def create_project():
     json_data = post_request('/api/projects')
     return json_data['pr_id']
@@ -73,7 +89,6 @@ def create_project():
 
 def create_participant(project_id):
     data = {'pa_project': project_id}
-
     json_data = post_request('/api/participants', data)
     return json_data['pa_id']
 
@@ -100,18 +115,6 @@ def start_recording(recording_id):
 
 def stop_recording(recording_id):
     post_request('/api/recordings/' + recording_id + '/stop')
-
-
-def send_event(evtType, evtTag):
-    try:
-        print("Sending event...")
-        data = {'ets': 0, 'type': evtType, 'tag': evtTag}
-        url = base_url + '/api/events'
-        req = urllib.request.Request(url)
-        req.add_header('Content-Type', 'application/json')
-        response = urllib.request.urlopen(req, (json.dumps(data)).encode())
-    except Exception as e:
-        print("Error Posting: " + str(e))
 
 
 if __name__ == "__main__":
@@ -143,7 +146,8 @@ if __name__ == "__main__":
 
         print("Sockets open!")
 
-        # # Create socket which will send a keep alive message for the live data stream
+
+        # # OLD VERSION: Create socket which will send a keep alive message for the live data stream
         # data_socket = mksock(peer)
         # td = threading.Timer(0, send_keepalive_msg, [data_socket, KA_DATA_MSG, peer])
         # td.start()
@@ -180,8 +184,11 @@ if __name__ == "__main__":
         eventType = 'luxVal'
         eventTag = '12.08'  # can be json (see API docs page 21)
         time.sleep(2)
+
+        print("Sending event...")
         send_event(eventType, eventTag)
         time.sleep(2)
+        print("Sending event...")
         send_event(eventType, eventTag)
         time.sleep(2)
 

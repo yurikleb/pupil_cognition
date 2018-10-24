@@ -1,135 +1,131 @@
-# A Controller to create projects recordings on the Tobii Glasses Pro Eye tracker
+# A M5Stack Controller to create projects and recordings on the Tobii Glasses Pro Eye tracker
+# As well as log sensor data.
 
-# microPython of "urllib.request" version is "urequests"
-# https://github.com/micropython/micropython-lib/blob/master/urequests/urequests.py
-
-# from machine import I2C, Pin
-# from tsl2561 import *
-from m5stack import lcd
-import json
+from m5stack import *
+from machine import I2C, Pin
+from tsl2561 import *
 import time
-import urequests
-import socket
+import tobii_glasses as tobii
 
 
-GLASSES_IP = "192.168.71.50"  # IPv4 address
-PORT = 49152
-base_url = 'http://' + GLASSES_IP
-timeout = 1
-
-def post_request(api_action, the_data=None):
-    url = base_url + api_action
-    the_data = json.dumps(the_data)
-    response = urequests.request("POST", url, the_data.encode(), headers={"Content-Type": "application/json"})
-    json_data = json.loads(response.content)
-    return json_data
-
-    # print(response.content)
-    # lcd.print("RESPONSE: {} \n".format(response.content))
-
-def wait_for_status(api_action, key, values):
-    url = base_url + api_action
-    running = True
-    json_data = None
-
-    while running:
-        response = urequests.request("GET", url, headers={"Content-Type": "application/json"})
-        print(response.content)
-        json_data = json.loads(response.content)
-        if json_data[key] in values:
-            running = False
-        time.sleep(1)
-
-    return json_data[key]
+project_id, participant_id, calibration_id, recording_id = '', '', '', ''
+is_calibrated = False
 
 
-def create_project():
-    json_data = post_request('/api/projects')
-    return json_data['pr_id']
+def new_project():
 
-
-def create_participant(project_id):
-    data = {'pa_project': project_id}
-
-    json_data = post_request('/api/participants', data)
-    return json_data['pa_id']
-
-
-def create_calibration(project_id, participant_id):
-    data = {'ca_project': project_id, 'ca_type': 'default', 'ca_participant': participant_id}
-    json_data = post_request('/api/calibrations', data)
-    return json_data['ca_id']
-
-
-def start_calibration(calibration_id):
-    post_request('/api/calibrations/' + calibration_id + '/start')
-
-
-def create_recording(participant_id):
-    data = {'rec_participant': participant_id}
-    json_data = post_request('/api/recordings', data)
-    return json_data['rec_id']
-
-
-def start_recording(recording_id):
-    post_request('/api/recordings/' + recording_id + '/start')
-
-
-def stop_recording(recording_id):
-    post_request('/api/recordings/' + recording_id + '/stop')
-
-
-if __name__ == "__main__":
-
-    time.sleep_ms(1000)
-
-    lcd.clear()
-    lcd.setCursor(0, 0)
-    lcd.setColor(lcd.WHITE)
-
-    main_running = True
-    peer = (GLASSES_IP, PORT)
+    global project_id, participant_id
 
     try:
-        project_id = create_project()
+        project_id = tobii.create_project()
         print("project ID created: {} ".format(project_id))
 
-        participant_id = create_participant(project_id)
+        participant_id = tobii.create_participant(project_id)
         print("participant id created: {} ".format(participant_id))
 
-        calibration_id = create_calibration(project_id, participant_id)
+        print("Project: ", project_id, ", Participant: ", participant_id)
+
+    except Exception as e:
+        print("Could Not Create new Project / Paticipant / Calibration:")
+        print(str(e))
+
+
+def calibrate():
+    global calibration_id
+
+    try:
+        calibration_id = tobii.create_calibration(project_id, participant_id)
         print("calibration id created: {}".format(calibration_id))
 
-        print("Project: " + project_id, ", Participant: ", participant_id, ", Calibration: ", calibration_id, " ")
-        lcd.print("Project: {} \n Participant: {} \n Calibration: {} ".format(project_id, participant_id, calibration_id,))
-
-        input_var = input("Press enter to calibrate")
-
-        start_calibration(calibration_id)
+        tobii.start_calibration(calibration_id)
         print('Calibration started...')
-        status = wait_for_status('/api/calibrations/' + calibration_id + '/status', 'ca_state', ['failed', 'calibrated'])
+        status = tobii.wait_for_status('/api/calibrations/' + calibration_id + '/status', 'ca_state', ['failed', 'calibrated'])
 
         if status == 'failed':
             print('Calibration failed, using default calibration instead')
         else:
             print('Calibration successful')
 
-        recording_id = create_recording(participant_id)
-        print('Recording started...')
+    except Exception as e:
+        print("Could Not Calibrate:")
+        print(str(e))
 
-        start_recording(recording_id)
+
+def record():
+
+    global recording_id
+
+    try:
+        recording_id = tobii.create_recording(participant_id)
+        print('Recording Created...')
+
+        tobii.start_recording(recording_id)
+        print('Recording Started...')
+
         time.sleep(5)
-        stop_recording(recording_id)
 
-        status = wait_for_status('/api/recordings/' + recording_id + '/status', 'rec_state', ['failed', 'done'])
+        sensor_val = sensor.read()
+        eventType = 'luxVal'
+        # eventTag = '12.08'  # can be json (see Tobii Pro Glasses 2 API docs page 21)
+        eventTag = str(sensor_val)
+        print("Sending sensor value event...")
+        tobii.send_event(eventType, eventTag)
+
+        time.sleep(5)
+
+        tobii.stop_recording(recording_id)
+
+        status = tobii.wait_for_status('/api/recordings/' + recording_id + '/status', 'rec_state', ['failed', 'done'])
         if status == 'failed':
             print('Recording failed')
         else:
             print('Recording successful')
 
-
     except Exception as e:
-        print("Error")
+        print("Could Not Record:")
         print(str(e))
+
+
+def ui_init():
+    lcd.clear()
+    lcd.setColor(lcd.WHITE)
+    lcd.setwin(0, 200, 106, 240)
+    lcd.clearwin(lcd.DARKGREY)
+    lcd.text(lcd.CENTER, lcd.CENTER, "CALIBRATE")
+    lcd.setwin(213, 200, 320, 240)
+    lcd.clearwin(lcd.DARKGREY)
+    lcd.text(lcd.CENTER, lcd.CENTER, "RECORD")
+    lcd.resetwin()
+    lcd.setCursor(0, 0)
+
+
+if __name__ == "__main__":
+
+    time.sleep(1)
+
+    # Connect to to TSL2561 Lux Sensor
+    try:
+        print("Connecting to TSL2561 via I2c...")
+        lcd.print("Connecting to TSL2561 via I2c...")
+        i2c = I2C(sda=21, scl=22, freq=20000)
+        # i2cAddr = i2c.scan()
+        sensor = TSL2561(i2c)
+        sensor.active(True)
+        print("Connected!")
+        lcd.print("Connected!")
+    except Exception as e:
+        print("Could not connect:")
+        print(str(e))
+
+    time.sleep(1)
+
+    ui_init()
+
+    main_running = True
+    new_project()
+    lcd.print(" Project: {} \n Participant: {} \n ".format(project_id, participant_id))
+
+    buttonA.wasReleased(calibrate)
+    buttonC.wasReleased(record)
 
     main_running = False
