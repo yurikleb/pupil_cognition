@@ -13,6 +13,18 @@ PORT = 49152
 base_url = 'http://' + GLASSES_IP
 timeout = 1
 
+
+class TobiiRecording:
+    def __init__(self):
+        self.is_calibrated = False
+        self.is_calibrating = False
+        self.is_recording = False
+        self.project_id = ''
+        self.participant_id = ''
+        self.calibration_id = ''
+        self.recording_id = ''
+
+
 def post_request(api_action, the_data=None):
     url = base_url + api_action
     the_data = json.dumps(the_data)

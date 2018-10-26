@@ -63,6 +63,12 @@ If getting a "[screen is terminating]" message, try running screen with sudo
 
 [Full instructions how to use the MicroPython REPL](http://docs.micropython.org/en/latest/esp8266/tutorial/repl.html#repl-over-the-serial-port)
 
+To manage files on a MicroPython board (browse, upload, etc..) use ampy: 
+```
+export AMPY_PORT=/dev/ttyUSB0
+ampy ls /flash/
+```
+
 ### Other Micro Python Tools
 + [Mu Editor](https://github.com/mu-editor/mu)
 + [MU ESP-Mode](https://github.com/dybber/mu/tree/esp-mode)
